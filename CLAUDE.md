@@ -1,0 +1,13 @@
+Read docs/PRD.md (v1.1) before any task. Non-negotiables:
+- Stack: Python 3.11, SQLite, Streamlit, PyYAML, anthropic SDK, PyGithub, google-api-python-client, python-dotenv.
+- Architecture: three STAGES (discover, outreach, track) that communicate only through SQLite. No agent frameworks, no inter-stage calls.
+- Five tables exactly as PRD Section 6: vendors, evidence, interactions, events, runs.
+- Status changes happen ONLY by inserting an events row; vendors.status must be reconstructable from events. Illegal transitions (PRD Section 7) raise.
+- Evidence rule: a value without source_url is stored in evidence with verified=false and is NEVER written to vendors.attributes. LLM extraction must return a snippet with every value or the value is discarded.
+- Screening is three-valued (pass/fail/unknown). unknown never auto-rejects; it sets next_action=outreach_to_verify.
+- Discovery = SourceAdapter (discover, normalize) + pure screen(vendor, evidence, ruleset). Screening logic never lives inside an adapter.
+- Every run writes a runs row with ruleset_version and persists raw payloads to data/runs/<run_id>/.
+- Web search: Anthropic Messages API built-in tool type "web_search_20250305". No third-party search APIs.
+- Human gates: only Identified->Screened and Contacted->Replied are automatic; LLM status proposals auto-apply only at confidence >= 0.85 and never for quote_received/sampling.
+- Secrets from .env only. Never hardcode keys.
+- Work only on the slot I name. Stop and report when its acceptance criteria are met.
