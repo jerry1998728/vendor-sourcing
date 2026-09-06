@@ -39,7 +39,7 @@ import {
   type ScreenResult,
   type VendorFilters as Filters,
   type VendorStatus,
-} from "@/lib/vendor-filters";
+} from "@/lib/shared/vendor-filters";
 
 import type { TagDimension } from "@/lib/pipeline/types";
 

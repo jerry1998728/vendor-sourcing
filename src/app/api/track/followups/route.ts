@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { isDev } from "@/lib/shared/env";
 import { runFollowUps } from "@/lib/track/followups";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
   }
   const parsed = BodySchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "body must be { as_of? }" }, { status: 400 });
-  const now = parsed.data.as_of && process.env.NODE_ENV !== "production" ? new Date(parsed.data.as_of) : new Date();
+  const now = parsed.data.as_of && isDev() ? new Date(parsed.data.as_of) : new Date();
   try {
     return NextResponse.json(await runFollowUps({ now }));
   } catch (err) {

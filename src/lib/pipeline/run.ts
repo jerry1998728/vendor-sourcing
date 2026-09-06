@@ -3,48 +3,34 @@
  * Every run writes a runs row with ruleset_version and persists raw payloads
  * under data/runs/<run_id>/. Status changes go through transition() only.
  */
-import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 
 import { getAdapter } from "@/lib/adapters";
 import { DEFAULT_EXCLUDED_DOMAINS } from "@/lib/adapters/webSearchLlm";
-import { getDb, nowIso, type Db, type DbOrTx } from "@/lib/db";
-import { finishRun, getRun, listRuns, updateRunCounts } from "@/lib/db/queries";
+import { getDb, nowIso, type Db } from "@/lib/db";
+import { finishRun, getRun, isCancelRequested, listRuns, updateRunCounts } from "@/lib/db/queries";
 import {
-  evidence,
   runs,
-  tags,
-  vendors,
-  type EvidenceRow,
   type Run,
   type RunCounts,
   type RunPhase,
-  type ScreenResult,
-  type SourceBadge,
-  type VendorAttributes,
 } from "@/lib/db/schema";
-import { transition } from "@/lib/db/state";
 import { emptyUsage } from "@/lib/llm/client";
+import { isDev } from "@/lib/shared/env";
 import { buildDiscoveryQuery, loadConfig, loadRuleset } from "@/lib/rulesets/loader";
 
 import { mapWithConcurrency } from "./concurrency";
 import { canonicalDomain, domainMatches } from "./ids";
-import { screen, type Ruleset } from "./screen";
-import { appendJsonl, newRunId, persistJson, readRawRecords, relativeRunDir } from "./storage";
+import { appendJsonl, hasRawRecords, newRunId, persistJson, readRawRecords, relativeRunDir } from "./storage";
 import {
-  MULTI_VALUE_FIELDS,
   type AdapterContext,
   type NormalizeResult,
   type RawRecord,
-  type VendorCandidate,
 } from "./types";
 
 const NORMALIZE_CONCURRENCY = 3;
 
 /** CLAUDE.md cost control: cap candidates by default outside a production build. */
 const DEV_CANDIDATE_LIMIT = 5;
-function isDevEnvironment(): boolean {
-  return process.env.NODE_ENV !== "production";
-}
 
 export type CreateRunOptions = {
   /** run_id whose persisted raw_records.jsonl to re-extract; skips discover(). */
@@ -74,7 +60,7 @@ export function createRun(configName: string, opts: CreateRunOptions = {}, db: D
   query.limit =
     opts.limit !== undefined
       ? Math.min(opts.limit, query.limit)
-      : isDevEnvironment()
+      : isDev()
         ? Math.min(query.limit, DEV_CANDIDATE_LIMIT)
         : query.limit;
   const run_id = newRunId();
@@ -99,230 +85,15 @@ export function createRun(configName: string, opts: CreateRunOptions = {}, db: D
   return row;
 }
 
-/** Most recent finished run of a config, as a replay source. */
+/** Most recent finished discovery run of a config that still has its candidate file; refreshes and uploads never qualify. */
 export function findReplaySource(configName: string, db: Db = getDb()): Run | undefined {
-  return listRuns(db, 50).find((r) => r.query.config === configName && r.finished_at);
+  return listRuns(db, 100).find(
+    (r) => r.query.config === configName && r.finished_at && (r.input_type === "web_search" || r.input_type === "github") && !r.query.replay_of && hasRawRecords(r.run_id),
+  );
 }
 
-export type WriteOutcome = {
-  vendor_id: string;
-  is_new: boolean;
-  result: ScreenResult;
-  coverage_confidence: number;
-  must_field_coverage: number;
-  unknown_must_fields: string[];
-};
-
-const BADGE_RANK: Record<SourceBadge, number> = { verified: 3, proxy: 2, manual: 1, unknown: 0 };
-
-function buildAttributes(rows: EvidenceRow[]): VendorAttributes {
-  const out: VendorAttributes = {};
-  const byField = new Map<string, EvidenceRow[]>();
-  for (const r of rows) {
-    if (!r.verified || r.value === null || r.value === "") continue;
-    const list = byField.get(r.field_path) ?? [];
-    list.push(r);
-    byField.set(r.field_path, list);
-  }
-  for (const [field, list] of byField) {
-    // confidence first, then insertion order, so attribute order never depends on which index SQLite picked
-    const values = [...new Set(list.sort((a, b) => b.confidence - a.confidence || a.evidence_id - b.evidence_id).map((r) => r.value as string))];
-    out[field] = MULTI_VALUE_FIELDS.has(field) ? values : values[0];
-  }
-  return out;
-}
-
-function nextActionFor(result: ScreenResult): string {
-  return result === "unknown" ? "outreach_to_verify" : "review";
-}
-
-/**
- * Upsert one normalized vendor with its evidence and tags, screen it against
- * the run's ruleset, promote verified values to attributes and move new
- * vendors Identified -> Screened. Idempotent for re-runs.
- */
-export function writeNormalizedVendor(
-  db: DbOrTx,
-  run: Run,
-  ruleset: Ruleset,
-  r: NormalizeResult & { vendor: VendorCandidate },
-): WriteOutcome {
-  return db.transaction((tx) => {
-    const now = nowIso();
-    const v = r.vendor;
-    const existing = tx.select().from(vendors).where(eq(vendors.vendor_id, v.vendor_id)).get();
-    const isNew = !existing;
-    if (!existing) {
-      tx.insert(vendors)
-        .values({
-          vendor_id: v.vendor_id,
-          name: v.name,
-          vendor_type: v.vendor_type,
-          primary_domain: v.primary_domain,
-          first_seen_run_id: run.run_id,
-          discovered_via: v.discovered_via,
-          discovered_at: now,
-          updated_at: now,
-        })
-        .run();
-    }
-
-    // Evidence: insert once per (field_path, value, source_url); refresh observed_at.
-    const evidenceIds: (number | null)[] = [];
-    for (const e of r.evidence) {
-      const dup = tx
-        .select({ id: evidence.evidence_id, verified: evidence.verified })
-        .from(evidence)
-        .where(
-          and(
-            eq(evidence.vendor_id, v.vendor_id),
-            eq(evidence.field_path, e.field_path),
-            e.value === null ? isNull(evidence.value) : eq(evidence.value, e.value),
-            e.source_url === null ? isNull(evidence.source_url) : eq(evidence.source_url, e.source_url),
-          ),
-        )
-        .get();
-      if (dup) {
-        tx.update(evidence)
-          .set({
-            observed_at: now,
-            ...(e.verified && !dup.verified
-              ? { verified: true, snippet: e.snippet, confidence: e.confidence, proxy: e.proxy }
-              : {}),
-          })
-          .where(eq(evidence.evidence_id, dup.id))
-          .run();
-        evidenceIds.push(dup.id);
-        continue;
-      }
-      const ins = tx
-        .insert(evidence)
-        .values({
-          vendor_id: v.vendor_id,
-          field_path: e.field_path,
-          value: e.value,
-          source_url: e.source_url,
-          snippet: e.snippet,
-          extraction_method: e.extraction_method,
-          confidence: e.confidence,
-          proxy: e.proxy,
-          verified: e.verified,
-          attested_by: e.attested_by,
-          observed_at: e.observed_at || now,
-        })
-        .returning({ id: evidence.evidence_id })
-        .get();
-      evidenceIds.push(ins.id);
-    }
-
-    // Drop "not found" placeholders for fields that now have a real value.
-    const fieldsWithValues = tx
-      .selectDistinct({ field_path: evidence.field_path })
-      .from(evidence)
-      .where(and(eq(evidence.vendor_id, v.vendor_id), isNotNull(evidence.value)))
-      .all()
-      .map((x) => x.field_path);
-    if (fieldsWithValues.length > 0) {
-      tx.delete(evidence)
-        .where(
-          and(
-            eq(evidence.vendor_id, v.vendor_id),
-            isNull(evidence.value),
-            inArray(evidence.field_path, fieldsWithValues),
-          ),
-        )
-        .run();
-    }
-
-    // Tags: unique per (vendor, dimension, value); a stronger badge wins.
-    for (const t of r.tags) {
-      const evidenceId = t.evidence_index === null ? null : (evidenceIds[t.evidence_index] ?? null);
-      const ex = tx
-        .select()
-        .from(tags)
-        .where(and(eq(tags.vendor_id, v.vendor_id), eq(tags.dimension, t.dimension), eq(tags.value, t.value)))
-        .get();
-      if (ex) {
-        if (BADGE_RANK[t.source_badge] > BADGE_RANK[ex.source_badge] || (evidenceId && !ex.evidence_id)) {
-          tx.update(tags)
-            .set({ source_badge: t.source_badge, evidence_id: evidenceId ?? ex.evidence_id, updated_at: now })
-            .where(eq(tags.tag_id, ex.tag_id))
-            .run();
-        }
-        continue;
-      }
-      tx.insert(tags)
-        .values({
-          vendor_id: v.vendor_id,
-          dimension: t.dimension,
-          value: t.value,
-          source_badge: t.source_badge,
-          evidence_id: evidenceId,
-          updated_at: now,
-        })
-        .run();
-    }
-
-    // Screen against everything known about the vendor (all runs).
-    const rows = tx.select().from(evidence).where(eq(evidence.vendor_id, v.vendor_id)).orderBy(asc(evidence.evidence_id)).all();
-    const outcome = screen({ vendor_id: v.vendor_id, name: v.name, vendor_type: v.vendor_type }, rows, ruleset);
-    const attributes = buildAttributes(rows);
-    const verified = (fp: string) => rows.filter((x) => x.field_path === fp && x.verified && x.value);
-    const first = (fp: string) => verified(fp).sort((a, b) => b.confidence - a.confidence || a.evidence_id - b.evidence_id)[0]?.value ?? null;
-    const verifiedNow = r.evidence.some((e) => e.verified);
-    const status = existing?.status ?? "Identified";
-    const keepNextAction = status !== "Identified" && status !== "Screened";
-
-    tx.update(vendors)
-      .set({
-        name: existing?.name && existing.name.trim() ? existing.name : v.name,
-        primary_domain: v.primary_domain ?? existing?.primary_domain ?? null,
-        contact_email: first("contact_email") ?? existing?.contact_email ?? null,
-        registration_country: first("registration_country"),
-        ownership_country: first("ownership_country"),
-        parent_entity: first("parent_entity"),
-        collection_countries: [...new Set(verified("collection_countries").map((x) => x.value as string))],
-        attributes,
-        screen_result: outcome.result,
-        screen_reasons: outcome.reasons,
-        coverage_confidence: outcome.coverageConfidence,
-        next_action: keepNextAction ? existing?.next_action ?? null : nextActionFor(outcome.result),
-        last_verified_at: verifiedNow ? now : existing?.last_verified_at ?? null,
-        updated_at: now,
-      })
-      .where(eq(vendors.vendor_id, v.vendor_id))
-      .run();
-
-    if (status === "Identified") {
-      transition(
-        {
-          vendorId: v.vendor_id,
-          toStatus: "Screened",
-          actor: "system",
-          reason: `screened:${outcome.result}`,
-          confidence: outcome.coverageConfidence,
-          evidenceRef: run.run_id,
-          payload: {
-            run_id: run.run_id,
-            ruleset_version: ruleset.ruleset_version,
-            result: outcome.result,
-            unknown_must_fields: outcome.unknownMustFields,
-          },
-        },
-        tx,
-      );
-    }
-
-    return {
-      vendor_id: v.vendor_id,
-      is_new: isNew,
-      result: outcome.result,
-      coverage_confidence: outcome.coverageConfidence,
-      must_field_coverage: outcome.mustFieldCoverage,
-      unknown_must_fields: outcome.unknownMustFields,
-    };
-  });
-}
+export { writeNormalizedVendor, type WriteOutcome } from "./write";
+import { writeNormalizedVendor, type WriteOutcome } from "./write";
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -375,7 +146,12 @@ export async function executeRun(runId: string, db: Db = getDb()): Promise<Run> 
     let unreachable = 0;
     let total = hop1.length;
 
+    let cancelled = false;
     const processOne = async (raw: RawRecord) => {
+      if (cancelled || isCancelRequested(runId, db)) {
+        cancelled = true;
+        return;
+      }
       let result: NormalizeResult;
       try {
         result = await adapter.normalize(raw, ctx);
@@ -440,7 +216,7 @@ export async function executeRun(runId: string, db: Db = getDb()): Promise<Run> 
       must_field_coverage: round3(mean(written.map((w) => w.must_field_coverage))),
       unknown_rate: round3(written.length ? written.filter((w) => w.result === "unknown").length / written.length : 0),
       llm_usage: usage,
-      progress: { phase: "done", step: normalized, total },
+      progress: { phase: cancelled ? "cancelled" : "done", step: normalized, total },
     };
     await persist("summary.json", { counts, vendors: written });
     finishRun(runId, counts, db);

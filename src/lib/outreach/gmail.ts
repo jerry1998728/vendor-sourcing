@@ -1,16 +1,18 @@
 /**
- * Gmail via googleapis. OAuth desktop flow: GET /api/gmail/auth redirects to
+ * Gmail via @googleapis/gmail. OAuth desktop flow: GET /api/gmail/auth redirects to
  * Google, GET /api/gmail/callback exchanges the code and persists token.json
  * (repo root, gitignored). Everything here is server-only.
  */
 import fs from "node:fs";
 import path from "node:path";
-import { google, type gmail_v1 } from "googleapis";
+import { auth, gmail, type gmail_v1 } from "@googleapis/gmail";
+
+// Use the auth client bundled with the Gmail package so there is one copy of its types.
+type OAuth2Client = InstanceType<typeof auth.OAuth2>;
+type Credentials = Parameters<OAuth2Client["setCredentials"]>[0];
 
 import { htmlToText } from "@/lib/llm/fetchPage";
 
-type OAuth2Client = InstanceType<typeof google.auth.OAuth2>;
-type Credentials = Parameters<OAuth2Client["setCredentials"]>[0];
 
 export const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.send",
@@ -64,12 +66,12 @@ export function callbackUrl(origin: string): string {
 
 function oauthClient(origin?: string): OAuth2Client {
   const c = loadClientCredentials();
-  return new google.auth.OAuth2(c.client_id, c.client_secret, origin ? callbackUrl(origin) : undefined);
+  return new auth.OAuth2(c.client_id, c.client_secret, origin ? callbackUrl(origin) : undefined);
 }
 
 /** Desktop clients accept any http://localhost:<port>/<path> redirect, so the callback route works as-is. */
-export function authUrl(origin: string): string {
-  return oauthClient(origin).generateAuthUrl({ access_type: "offline", prompt: "consent", scope: GMAIL_SCOPES });
+export function authUrl(origin: string, state: string): string {
+  return oauthClient(origin).generateAuthUrl({ access_type: "offline", prompt: "consent", scope: GMAIL_SCOPES, state });
 }
 
 export async function exchangeCode(origin: string, code: string): Promise<void> {
@@ -91,7 +93,7 @@ function authorizedClient(): OAuth2Client {
 }
 
 export function gmailClient(): gmail_v1.Gmail {
-  return google.gmail({ version: "v1", auth: authorizedClient() });
+  return gmail({ version: "v1", auth: authorizedClient() });
 }
 
 export async function profile(): Promise<{ email: string; messages_total: number | null }> {

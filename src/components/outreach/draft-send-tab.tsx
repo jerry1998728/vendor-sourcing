@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import type { InteractionRow, Vendor } from "@/lib/db/schema";
 import { formatDate, formatPct } from "@/lib/format";
 
-import { DraftSheet, unknownMustFields, type GmailState } from "./draft-sheet";
+import { unknownMustFields } from "@/lib/shared/must-fields";
+
+import { DraftSheet, type GmailState } from "./draft-sheet";
 
 type Row = Vendor & { draft?: InteractionRow };
 

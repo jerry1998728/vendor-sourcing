@@ -38,18 +38,25 @@ flowchart LR
 | Path | Role |
 |---|---|
 | `src/lib/db` | schema (8 tables), client, `state.ts` (transitions, replay, informational events), filters, metrics, queries, CSV export |
-| `src/lib/pipeline` | adapter contract and zod schemas, `screen.ts`, `run.ts` (discover → normalize → write → screen), `refresh.ts`, `manual.ts`, replay storage, cron |
+| `src/lib/shared` | client-safe helpers: filter params, must-field definition, env, email, HTTP, default rulesets |
+| `src/lib/pipeline` | adapter contract and zod schemas, `screen.ts`, `run.ts` (discover → normalize), `write.ts` (plan → apply → finalize), `refresh.ts`, `manual.ts`, replay storage, cron |
 | `src/lib/adapters` | `webSearchLlm.ts`, `githubOrg.ts` |
 | `src/lib/rulesets` | YAML loaders for configs and rulesets, config writer |
 | `src/lib/llm` | Anthropic client with per-task model routing, page fetcher |
-| `src/lib/outreach` | Gmail OAuth and send, drafts, recipient allowlist |
-| `src/lib/track` | inbound polling, status inference, follow-ups |
+| `src/lib/outreach` | Gmail OAuth, `send.ts` (the human send gate), drafts, recipient allowlist |
+| `src/lib/track` | inbound polling, status inference, proposal decisions, follow-ups |
 | `src/app/(app)` | Dashboard, Database, Outreach, `/vendors/[id]` pages |
 | `src/app/api` | route handlers: runs, refresh, schedules, inputs, vendors, proposals, gmail, track, export |
 | `configs/`, `rulesets/` | the three P0 categories |
 | `tests/` | unit and integration tests, reply fixtures, CSV fixture |
 
+## Deployment contract
+
+One long-lived Node process with a writable disk: the SQLite file, `data/runs/`, `token.json` from the OAuth callback, and YAML configs written from the Inputs tab. Discovery, refresh and polling run inside the process (`after()`), and a restart marks unfinished runs failed at boot. This is not a serverless or multi-instance shape; put `APP_PASSWORD` in front of it before it leaves localhost.
+
 ## Setup
+
+Requires Node 22.9 or later (`better-sqlite3` ships prebuilt binaries for current Node releases; older versions need a C++ toolchain).
 
 ```bash
 npm install
@@ -66,10 +73,10 @@ The SQLite database is created and migrated on first use at `data/vendor-sourcin
 |---|---|
 | `ANTHROPIC_API_KEY` | web search discovery and extraction (claude-haiku-4-5), seed queries, email drafts and reply inference (claude-sonnet-5) |
 | `GITHUB_TOKEN` | the `github_org` adapter; read access to public repositories is enough |
-| `GMAIL_CREDENTIALS_PATH` | path to the Google OAuth desktop-client JSON, default `./credentials.json` |
+| `GMAIL_CREDENTIALS_PATH` | path to the Google OAuth desktop-client JSON, default `./credentials.json` (client: `@googleapis/gmail`) |
 | `DEMO_ALLOWED_RECIPIENTS` | comma-separated addresses outreach may send to; anything else is rejected server-side |
 
-Optional: `ANTHROPIC_MODEL` forces one model for every task (testing only), `LLM_DISCOVER_EFFORT` / `LLM_EXTRACT_EFFORT` tune effort on models that support it, `DATABASE_PATH` moves the SQLite file.
+Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API route (any username; cron callers use `curl -u :password`), which you want before the app is reachable beyond localhost. `ANTHROPIC_MODEL` forces one model for every task (testing only), `LLM_DISCOVER_EFFORT` / `LLM_EXTRACT_EFFORT` tune effort on models that support it, `DATABASE_PATH` moves the SQLite file.
 
 ### Gmail
 

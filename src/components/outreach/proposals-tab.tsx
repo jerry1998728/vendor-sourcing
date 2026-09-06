@@ -10,13 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LlmEvent, PendingProposal } from "@/lib/db/queries";
 import { formatDate, formatPct } from "@/lib/format";
-
-async function post(url: string, body: unknown): Promise<Record<string, unknown>> {
-  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  const data = (await res.json()) as Record<string, unknown> & { error?: string };
-  if (!res.ok) throw new Error(data.error ?? `${url} failed (${res.status})`);
-  return data;
-}
+import { postJson } from "@/lib/shared/http";
 
 export function ProposalsTab({ proposals, llmEvents, activeThreads }: { proposals: PendingProposal[]; llmEvents: LlmEvent[]; activeThreads: number }) {
   const router = useRouter();
@@ -39,23 +33,23 @@ export function ProposalsTab({ proposals, llmEvents, activeThreads }: { proposal
 
   const followUps = () =>
     run("followups", async () => {
-      const d = await post("/api/track/followups", {});
+      const d = await postJson("/api/track/followups", {});
       return `Follow-ups: ${d.checked} checked, ${d.drafted_7d} drafted (7d), ${d.drafted_14d} drafted (14d), ${d.dormant} dormant.`;
     });
   const poll = () =>
     run("poll", async () => {
-      const d = await post("/api/track/poll", {});
+      const d = await postJson("/api/track/poll", {});
       const errs = Array.isArray(d.errors) ? (d.errors as string[]) : [];
       return `Polled ${d.threads} thread(s): ${d.new_inbound} new inbound, ${d.replied} replied, ${d.applied} applied, ${d.proposals} proposals${errs.length ? `; ${errs.join("; ")}` : ""}`;
     });
   const decide = (p: PendingProposal, decision: "accept" | "reject") =>
     run(`p${p.proposal_id}`, async () => {
-      await post(`/api/proposals/${p.proposal_id}`, { decision });
+      await postJson(`/api/proposals/${p.proposal_id}`, { decision });
       return `Proposal #${p.proposal_id} ${decision === "accept" ? "accepted" : "rejected"}.`;
     });
   const revert = (e: LlmEvent) =>
     run(`e${e.event_id}`, async () => {
-      await post(`/api/vendors/${encodeURIComponent(e.vendor_id)}/revert`, { event_id: e.event_id });
+      await postJson(`/api/vendors/${encodeURIComponent(e.vendor_id)}/revert`, { event_id: e.event_id });
       return `Reverted event #${e.event_id} for ${e.vendor_name}.`;
     });
 

@@ -72,22 +72,41 @@ export function getRun(runId: string, db: DbOrTx = getDb()): Run | undefined {
   return db.select().from(runs).where(eq(runs.run_id, runId)).get();
 }
 
-export type RunStatus = "running" | "done" | "failed";
+export type RunStatus = "running" | "done" | "failed" | "cancelled";
 
 export function runStatus(run: Run): RunStatus {
   if (!run.finished_at) return "running";
-  return run.counts.progress?.phase === "failed" ? "failed" : "done";
+  const phase = run.counts.progress?.phase;
+  return phase === "failed" ? "failed" : phase === "cancelled" ? "cancelled" : "done";
 }
 
-const ACTIVE_WINDOW_MS = 30 * 60 * 1000;
-
-/** An unfinished run for this config started within the last 30 minutes. */
+/**
+ * An unfinished run for this config. No time window: markInterruptedRuns()
+ * fails leftovers at boot, so an unfinished row means a run really is executing.
+ */
 export function findActiveRun(configName: string, db: DbOrTx = getDb()): Run | undefined {
+  return db.select().from(runs).where(isNull(runs.finished_at)).all().find((r) => r.query.config === configName);
+}
+
+/** Boot-time cleanup: a run still marked unfinished cannot be executing, the process just started. */
+export function markInterruptedRuns(db: DbOrTx = getDb()): number {
   const open = db.select().from(runs).where(isNull(runs.finished_at)).all();
-  const cutoff = Date.now() - ACTIVE_WINDOW_MS;
-  return open.find(
-    (r) => r.query.config === configName && Date.parse(r.started_at) > cutoff,
-  );
+  for (const r of open) {
+    finishRun(r.run_id, { progress: { ...(r.counts.progress ?? { phase: "queued" }), phase: "failed", error: "interrupted by a restart before it finished" } }, db);
+  }
+  return open.length;
+}
+
+/** Flag a running run; executeRun / executeRefresh check the flag between vendors. */
+export function requestCancel(runId: string, db: DbOrTx = getDb()): Run | undefined {
+  const run = getRun(runId, db);
+  if (!run || run.finished_at) return undefined;
+  updateRunCounts(runId, { progress: { ...(run.counts.progress ?? { phase: "queued" }), cancel_requested: true } }, db);
+  return getRun(runId, db);
+}
+
+export function isCancelRequested(runId: string, db: DbOrTx = getDb()): boolean {
+  return getRun(runId, db)?.counts.progress?.cancel_requested === true;
 }
 
 /** Merge a partial counts object into runs.counts. */
@@ -95,9 +114,14 @@ export function updateRunCounts(runId: string, patch: Partial<RunCounts>, db: Db
   return db.transaction((tx) => {
     const row = tx.select({ counts: runs.counts }).from(runs).where(eq(runs.run_id, runId)).get();
     if (!row) throw new Error(`run ${runId} not found`);
-    const merged: RunCounts = { ...row.counts, ...patch };
-    tx.update(runs).set({ counts: merged }).where(eq(runs.run_id, runId)).run();
-    return merged;
+    // progress merges too, so flags such as cancel_requested survive phase updates
+    const counts: RunCounts = {
+      ...row.counts,
+      ...patch,
+      progress: patch.progress ? { ...(row.counts.progress ?? {}), ...patch.progress } : row.counts.progress,
+    };
+    tx.update(runs).set({ counts }).where(eq(runs.run_id, runId)).run();
+    return counts;
   });
 }
 

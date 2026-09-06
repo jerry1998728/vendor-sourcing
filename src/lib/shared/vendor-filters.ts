@@ -9,6 +9,7 @@
  *   &tag.sensor_rig=stereo,imu&tag.scene_class=urban
  */
 import { TAG_DIMENSION_NAMES, isTagDimension, type TagDimension } from "@/lib/pipeline/types";
+import { singleParam as single } from "./params";
 
 export { SCREEN_RESULTS, VENDOR_STATUSES, type ScreenResult, type VendorStatus } from "@/lib/db/enums";
 import { SCREEN_RESULTS, VENDOR_STATUSES, type ScreenResult, type VendorStatus } from "@/lib/db/enums";
@@ -41,7 +42,6 @@ export type VendorFilters = {
 
 export type SearchParams = Record<string, string | string[] | undefined>;
 
-const single = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v);
 
 function list(v: string | string[] | undefined): string[] | undefined {
   const raw = Array.isArray(v) ? v.join(",") : v;

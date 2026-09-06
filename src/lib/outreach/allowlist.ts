@@ -6,10 +6,8 @@ export function parseAllowlist(raw: string | undefined = process.env.DEMO_ALLOWE
   return [...new Set(raw.split(/[,\s;]+/).map((s) => s.trim().toLowerCase()).filter((s) => EMAIL_RE.test(s)))];
 }
 
-export function normalizeEmail(email: string): string {
-  const m = /<([^>]+)>/.exec(email);
-  return (m ? m[1] : email).trim().toLowerCase();
-}
+export { normalizeEmail } from "@/lib/shared/email";
+import { normalizeEmail } from "@/lib/shared/email";
 
 /** Exact, case-insensitive match; an empty allowlist allows nobody. */
 export function isAllowedRecipient(email: string, allowlist: string[] = parseAllowlist()): boolean {

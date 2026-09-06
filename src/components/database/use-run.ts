@@ -8,6 +8,8 @@ import type { Run } from "@/lib/db/schema";
 
 export type RunView = { run: Run; status: RunStatus };
 
+const MAX_POLL_FAILURES = 3;
+
 /** Start a run for a config and poll /api/runs/[id] until it finishes; refreshes the page when done. */
 export function useRun() {
   const router = useRouter();
@@ -27,11 +29,13 @@ export function useRun() {
     (runId: string) => {
       stopPolling();
       setBusy(true);
+      let failures = 0;
       const tick = async () => {
         try {
           const res = await fetch(`/api/runs/${runId}`, { cache: "no-store" });
           if (!res.ok) throw new Error(`GET /api/runs/${runId} failed (${res.status})`);
           const data = (await res.json()) as RunView;
+          failures = 0;
           setView(data);
           if (data.status !== "running") {
             stopPolling();
@@ -39,7 +43,10 @@ export function useRun() {
             router.refresh();
           }
         } catch (err) {
-          setError(err instanceof Error ? err.message : String(err));
+          // A single blip should not abandon a run that is still executing server-side.
+          failures += 1;
+          if (failures < MAX_POLL_FAILURES) return;
+          setError(`${err instanceof Error ? err.message : String(err)} (gave up after ${failures} attempts; the run may still be executing, reload to check)`);
           stopPolling();
           setBusy(false);
         }
@@ -94,5 +101,17 @@ export function useRun() {
     [poll],
   );
 
-  return { view, error, busy, start, poll, resume, setError };
+  /** Ask the server to stop the run being polled; polling keeps going until it reports cancelled. */
+  const cancel = React.useCallback(async () => {
+    if (!view) return;
+    try {
+      const res = await fetch(`/api/runs/${view.run.run_id}/cancel`, { method: "POST" });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? `cancel failed (${res.status})`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [view]);
+
+  return { view, error, busy, start, poll, resume, cancel, setError };
 }

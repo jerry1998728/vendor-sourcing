@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { isDev } from "@/lib/shared/env";
 import { ingestInbound } from "@/lib/track/poll";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ const BodySchema = z.object({
 
 /** Demo/test seam: inject an inbound reply without Gmail. Disabled in production builds. */
 export async function POST(req: Request) {
-  if (process.env.NODE_ENV === "production") {
+  if (!isDev()) {
     return NextResponse.json({ error: "simulate is disabled in production" }, { status: 403 });
   }
   let body: unknown;

@@ -50,6 +50,7 @@ import {
   type Evidence,
   type NormalizeResult,
   type RawRecord,
+  type VendorCandidate,
   type SourceAdapter,
   type Tag,
   type VendorType,
@@ -258,7 +259,7 @@ The top-level registration_country, ownership_country, parent_entity and collect
 Answer only with the JSON object required by the schema.`;
 }
 
-function normalizeForMatch(s: string): string {
+export function normalizeForMatch(s: string): string {
   return s
     .toLowerCase()
     .replace(/[‘’‚‛]/g, "'")
@@ -268,9 +269,9 @@ function normalizeForMatch(s: string): string {
     .trim();
 }
 
-type PageIndex = { page: FetchedPage; key: string; norm: string };
+export type PageIndex = { page: FetchedPage; key: string; norm: string };
 
-function findSnippet(
+export function findSnippet(
   snippet: string | null,
   claimedUrl: string | null,
   pages: PageIndex[],
@@ -307,19 +308,10 @@ function cleanFieldPath(p: string): string {
   return p.trim().toLowerCase().replace(/[\s-]+/g, "_").replace(/[^a-z0-9_.]/g, "").slice(0, 64);
 }
 
-async function normalize(raw: RawRecord, ctx: AdapterContext): Promise<NormalizeResult> {
-  const domain = raw.domain ?? canonicalDomain(raw.url);
-  const empty = (page_type: NormalizeResult["page_type"], rawExtra: Record<string, unknown>): NormalizeResult => ({
-    page_type,
-    vendor: null,
-    evidence: [],
-    tags: [],
-    mentioned_vendors: [],
-    raw: { record: raw, ...rawExtra },
-  });
-  if (!domain) return empty("other", { reason: "no_domain" });
+type FetchedSet = { pages: FetchedPage[]; failures: FetchFailure[] };
 
-  // 1. Fetch the homepage, the discovered URL and a few "about"-style pages.
+/** I/O: the homepage, the discovered URL, a few "about"-style pages, and on refresh the pages behind existing evidence. */
+async function fetchVendorPages(raw: RawRecord, domain: string, ctx: AdapterContext): Promise<FetchedSet> {
   const failures: FetchFailure[] = [];
   const pages: FetchedPage[] = [];
   const seen = new Set<string>();
@@ -344,19 +336,19 @@ async function normalize(raw: RawRecord, ctx: AdapterContext): Promise<Normalize
     ? (raw.extra.refetch_urls as unknown[]).filter((u): u is string => typeof u === "string" && canonicalDomain(u) === domain).slice(0, 4)
     : [];
   await mapWithConcurrency(refetch, 3, (u) => take(u, 6_000));
-  if (pages.length === 0) {
-    ctx.log(`unreachable: ${domain} (${failures.map((f) => f.error).join(", ")})`);
-    return empty("unreachable", { failures });
-  }
+  return { pages, failures };
+}
 
-  // 2. Ask Claude for strict JSON.
+type Extraction = { parsed: NormalizeOutput | null; usage: Anthropic.Messages.Usage; model: string; stop_reason: string | null };
+
+/** I/O: one model call for strict JSON over the fetched pages. */
+async function extractClaims(pages: FetchedPage[], ctx: AdapterContext): Promise<Extraction> {
   const client = getAnthropic();
   const system = buildExtractionSystemPrompt(ctx.ruleset, ctx.config.vendor_type, ctx.config.requirement);
   const userText =
     pages
       .map((p, i) => `=== PAGE ${i + 1}: ${p.final_url}\nTITLE: ${p.title ?? ""}\n\n${p.text}`)
       .join("\n\n") + "\n\nExtract the JSON now.";
-
   const extractionModel = modelFor("extraction");
   const res = await client.messages.parse(
     {
@@ -371,35 +363,19 @@ async function normalize(raw: RawRecord, ctx: AdapterContext): Promise<Normalize
     },
     { signal: ctx.signal },
   );
-  const usage: Anthropic.Messages.Usage = res.usage;
-  addUsage(ctx.usage, usage);
-  const out = res.parsed_output;
-  const pageMeta = pages.map((p) => ({ url: p.url, final_url: p.final_url, status: p.status, title: p.title, chars: p.text.length }));
-  if (!out) {
-    ctx.log(`normalize: unparseable output for ${domain} (stop_reason=${res.stop_reason})`);
-    return empty("other", { pages: pageMeta, failures, stop_reason: res.stop_reason, usage, error: "unparseable_llm_output" });
-  }
-  const parsed = NormalizeOutput.parse(out); // belt and braces: zod is the contract
+  addUsage(ctx.usage, res.usage);
+  // zod is the contract even when the SDK already parsed the output
+  return { parsed: res.parsed_output ? NormalizeOutput.parse(res.parsed_output) : null, usage: res.usage, model: res.model, stop_reason: res.stop_reason };
+}
 
-  const now = new Date().toISOString();
+export type Grounded = { evidence: Evidence[]; tags: Tag[]; notes: string[]; vendor: VendorCandidate };
+
+/**
+ * Pure: every claim must be found verbatim on a fetched page or it stays
+ * unverified; tags follow their evidence; every must-field gets a row.
+ */
+export function groundClaims(parsed: NormalizeOutput, pages: FetchedPage[], raw: RawRecord, domain: string, ruleset: Ruleset, vendorType: VendorType, now: string): Grounded {
   const notes: string[] = [];
-
-  if (parsed.page_type !== "vendor_site") {
-    const mentioned = parsed.mentioned_vendors
-      .map((m) => ({ name: m.name.trim(), url: m.url.trim() }))
-      .filter((m) => m.name && canonicalDomain(m.url) && canonicalDomain(m.url) !== domain)
-      .slice(0, 15);
-    ctx.log(`${domain}: ${parsed.page_type}, ${mentioned.length} vendors mentioned`);
-    return {
-      page_type: parsed.page_type,
-      vendor: null,
-      evidence: [],
-      tags: [],
-      mentioned_vendors: mentioned,
-      raw: { record: raw, pages: pageMeta, failures, llm_output: parsed, usage, model: res.model },
-    };
-  }
-
   // 3. Ground every claim: the snippet must appear on a fetched page.
   const index: PageIndex[] = pages.map((p) => ({ page: p, key: p.final_url, norm: normalizeForMatch(p.text) }));
   const evidence: Evidence[] = [];
@@ -531,7 +507,7 @@ async function normalize(raw: RawRecord, ctx: AdapterContext): Promise<Normalize
   }
 
   // Every must-field gets a row, even when nothing was found.
-  for (const must of ctx.ruleset.must) {
+  for (const must of ruleset.must) {
     if (!evidence.some((e) => e.field_path === must.field_path)) {
       evidence.push({
         field_path: must.field_path,
@@ -569,9 +545,9 @@ async function normalize(raw: RawRecord, ctx: AdapterContext): Promise<Normalize
 
   const name = parsed.name.trim() || pages[0].title || domain;
   const vendor = {
-    vendor_id: vendorIdFor(domain, name, ctx.config.vendor_type),
+    vendor_id: vendorIdFor(domain, name, vendorType),
     name,
-    vendor_type: ctx.config.vendor_type,
+    vendor_type: vendorType,
     primary_domain: domain,
     contact_email: firstVerified("contact_email"),
     registration_country: firstVerified("registration_country"),
@@ -581,17 +557,52 @@ async function normalize(raw: RawRecord, ctx: AdapterContext): Promise<Normalize
     discovered_via: webSearchLlmAdapter.name,
   };
 
-  ctx.log(
-    `${domain}: vendor_site "${name}", ${evidence.filter((e) => e.verified).length}/${evidence.length} evidence verified, ${tags.length} tags`,
-  );
+  return { evidence, tags, notes, vendor };
+}
 
+async function normalize(raw: RawRecord, ctx: AdapterContext): Promise<NormalizeResult> {
+  const domain = raw.domain ?? canonicalDomain(raw.url);
+  const empty = (page_type: NormalizeResult["page_type"], rawExtra: Record<string, unknown>): NormalizeResult => ({
+    page_type,
+    vendor: null,
+    evidence: [],
+    tags: [],
+    mentioned_vendors: [],
+    raw: { record: raw, ...rawExtra },
+  });
+  if (!domain) return empty("other", { reason: "no_domain" });
+
+  const { pages, failures } = await fetchVendorPages(raw, domain, ctx);
+  if (pages.length === 0) {
+    ctx.log(`unreachable: ${domain} (${failures.map((f) => f.error).join(", ")})`);
+    return empty("unreachable", { failures });
+  }
+  const pageMeta = pages.map((p) => ({ url: p.url, final_url: p.final_url, status: p.status, title: p.title, chars: p.text.length }));
+
+  const { parsed, usage, model, stop_reason } = await extractClaims(pages, ctx);
+  if (!parsed) {
+    ctx.log(`normalize: unparseable output for ${domain} (stop_reason=${stop_reason})`);
+    return empty("other", { pages: pageMeta, failures, stop_reason, usage, error: "unparseable_llm_output" });
+  }
+
+  if (parsed.page_type !== "vendor_site") {
+    const mentioned = parsed.mentioned_vendors
+      .map((m) => ({ name: m.name.trim(), url: m.url.trim() }))
+      .filter((m) => m.name && canonicalDomain(m.url) && canonicalDomain(m.url) !== domain)
+      .slice(0, 15);
+    ctx.log(`${domain}: ${parsed.page_type}, ${mentioned.length} vendors mentioned`);
+    return { page_type: parsed.page_type, vendor: null, evidence: [], tags: [], mentioned_vendors: mentioned, raw: { record: raw, pages: pageMeta, failures, llm_output: parsed, usage, model } };
+  }
+
+  const { evidence, tags, notes, vendor } = groundClaims(parsed, pages, raw, domain, ctx.ruleset, ctx.config.vendor_type, new Date().toISOString());
+  ctx.log(`${domain}: vendor_site "${vendor.name}", ${evidence.filter((e) => e.verified).length}/${evidence.length} evidence verified, ${tags.length} tags`);
   return {
     page_type: "vendor_site",
     vendor,
     evidence,
     tags,
     mentioned_vendors: [],
-    raw: { record: raw, pages: pageMeta, failures, llm_output: parsed, usage, model: res.model, notes, llm_primary_domain: parsed.primary_domain },
+    raw: { record: raw, pages: pageMeta, failures, llm_output: parsed, usage, model, notes, llm_primary_domain: parsed.primary_domain },
   };
 }
 

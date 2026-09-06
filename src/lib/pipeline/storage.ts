@@ -57,6 +57,14 @@ export async function appendJsonl(runId: string, name: string, rows: unknown[]):
  * list instead of calling discover() again, so re-extraction never re-runs
  * the (billed, rate-limited) search step.
  */
+export function hasRawRecords(runId: string): boolean {
+  try {
+    return fs.existsSync(path.join(runDirReadOnly(runId), "raw_records.jsonl"));
+  } catch {
+    return false; // a malformed id in the table must not break the lookup
+  }
+}
+
 export async function readRawRecords(runId: string): Promise<unknown[]> {
   const file = path.join(runDirReadOnly(runId), "raw_records.jsonl");
   let text: string;

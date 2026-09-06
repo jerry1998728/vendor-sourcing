@@ -19,6 +19,7 @@ import { getVendorDetail, listRuns, listSchedules } from "@/lib/db/queries";
 import { vendors as vendorsTable } from "@/lib/db/schema";
 import { listConfigs, listRulesets } from "@/lib/rulesets/loader";
 import { mustFieldsFor } from "@/lib/rulesets/vendor";
+import { singleParam } from "@/lib/shared/params";
 
 export const metadata: Metadata = { title: "Database" };
 export const dynamic = "force-dynamic";
@@ -26,7 +27,7 @@ export const dynamic = "force-dynamic";
 const DEFAULT_CONFIG = "ego_data_stereo";
 export default async function DatabasePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;
-  const tabParam = Array.isArray(sp.tab) ? sp.tab[0] : sp.tab;
+  const tabParam = singleParam(sp.tab);
   const tab = tabParam === "review" || tabParam === "inputs" ? tabParam : "vendors";
   const filters = parseVendorFilters(sp);
   const db = getDb();
@@ -37,14 +38,14 @@ export default async function DatabasePage({ searchParams }: { searchParams: Pro
   const configs = listConfigs();
   const rulesets = listRulesets();
   // ?config=<name> preselects the run config (deep link from the Dashboard / Inputs).
-  const configParam = Array.isArray(sp.config) ? sp.config[0] : sp.config;
+  const configParam = singleParam(sp.config);
   const defaultConfig = configParam && configs.some((c) => c.name === configParam && c.valid) ? configParam : DEFAULT_CONFIG;
   const runs = listRuns(db, 100);
   const schedules = listSchedules(db);
   const reReview = listReReview(db);
 
   const queue = listReviewQueue({ vendor_type: filters.vendor_type }, db);
-  const vendorParam = Array.isArray(sp.vendor) ? sp.vendor[0] : sp.vendor;
+  const vendorParam = singleParam(sp.vendor);
   const currentId = vendorParam && queue.some((q) => q.vendor_id === vendorParam) ? vendorParam : queue[0]?.vendor_id;
   const current = currentId ? getVendorDetail(currentId, db) : null;
   const mustFields = current ? mustFieldsFor(current.vendor, db) : [];

@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { VendorDetail } from "@/lib/db/queries";
 import type { Vendor } from "@/lib/db/schema";
 import { formatPct } from "@/lib/format";
+import { postJson } from "@/lib/shared/http";
 
 export type QueueItem = Pick<Vendor, "vendor_id" | "name" | "vendor_type" | "screen_result" | "coverage_confidence">;
 export type { MustField } from "@/lib/rulesets/vendor";
@@ -50,11 +51,15 @@ export type ReReviewItem = { vendor_id: string; name: string; status: string; sc
 function ReReviewList({ items }: { items: ReReviewItem[] }) {
   const router = useRouter();
   const [busy, setBusy] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
   const dismiss = async (vendorId: string) => {
     setBusy(vendorId);
+    setError(null);
     try {
-      await fetch(`/api/vendors/${encodeURIComponent(vendorId)}/next-action`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ next_action: "review" }) });
+      await postJson(`/api/vendors/${encodeURIComponent(vendorId)}/next-action`, { next_action: "review" });
       router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
     }
@@ -63,6 +68,7 @@ function ReReviewList({ items }: { items: ReReviewItem[] }) {
   return (
     <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
       <p className="mb-2 font-medium">Re-review: screen result changed on refresh ({items.length})</p>
+      {error ? <p className="mb-2 text-destructive">{error}</p> : null}
       <ul className="flex flex-col gap-1">
         {items.map((v) => (
           <li key={v.vendor_id} className="flex flex-wrap items-center gap-2">
@@ -113,13 +119,7 @@ export function ReviewQueue({
     setBusy(label);
     setError(null);
     try {
-      const res = await fetch(`/api/vendors/${encodeURIComponent(current.vendor.vendor_id)}/transition`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? `transition failed (${res.status})`);
+      await postJson(`/api/vendors/${encodeURIComponent(current.vendor.vendor_id)}/transition`, body);
       setRejectOpen(false);
       setRejectCode("");
       setRejectNote("");

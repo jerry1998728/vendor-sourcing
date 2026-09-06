@@ -100,6 +100,8 @@ export const TRANSITION_WHITELIST: readonly Rule[] = [
 ];
 
 export const REVERT_REASON = "revert";
+/** Minimum alphanumeric characters in a reason for rules flagged requiresReason. */
+export const REASON_MIN_CHARS = 3;
 
 /** Pure whitelist check (no DB): may `actor` move a vendor from `from` to `to`? */
 export function isLegalTransition(from: VendorStatus, to: VendorStatus, actor: Actor): boolean {
@@ -255,6 +257,10 @@ export function transition(
           "illegal_actor",
           `${fromStatus} -> ${toStatus} may not be performed by ${actor} (allowed: ${rule.actors.join(", ")})`,
         );
+      }
+      // Rejections and reopens carry a real reason, not a placeholder; the UI also asks for a reason code.
+      if (rule.requiresReason && input.reason.replace(/[^a-z0-9]/gi, "").length < REASON_MIN_CHARS) {
+        throw new TransitionError("reason_required", `${fromStatus} -> ${toStatus} needs a reason of at least ${REASON_MIN_CHARS} characters`);
       }
       if (fromStatus === toStatus && fromStage === toStage) {
         throw new TransitionError(

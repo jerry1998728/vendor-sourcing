@@ -4,17 +4,14 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Undo2 } from "lucide-react";
 
+import { TONE_CLASS } from "@/components/badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { EventRow } from "@/lib/db/schema";
 import { formatDate, formatPct } from "@/lib/format";
+import { postJson } from "@/lib/shared/http";
 
-const ACTOR_CLASS: Record<string, string> = {
-  human: "border-border text-foreground",
-  system: "border-border text-muted-foreground",
-  adapter: "border-border text-muted-foreground",
-  llm_inference: "border-warning/40 bg-warning/15 text-warning",
-};
+const ACTOR_CLASS: Record<string, string> = { human: "border-border text-foreground", system: TONE_CLASS.muted, adapter: TONE_CLASS.muted, llm_inference: TONE_CLASS.warning };
 
 export function Timeline({ vendorId, events, latestEventId }: { vendorId: string; events: EventRow[]; latestEventId: number | null }) {
   const router = useRouter();
@@ -25,13 +22,7 @@ export function Timeline({ vendorId, events, latestEventId }: { vendorId: string
     setBusy(eventId);
     setError(null);
     try {
-      const res = await fetch(`/api/vendors/${encodeURIComponent(vendorId)}/revert`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ event_id: eventId }),
-      });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? `revert failed (${res.status})`);
+      await postJson(`/api/vendors/${encodeURIComponent(vendorId)}/revert`, { event_id: eventId });
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

@@ -27,7 +27,7 @@ export function RunConfigButton({
 }) {
   const [config, setConfig] = React.useState(defaultConfig);
   const [replay, setReplay] = React.useState(false);
-  const { view, error, busy, start, resume } = useRun();
+  const { view, error, busy, start, resume, cancel } = useRun();
 
   React.useEffect(() => {
     void resume(config);
@@ -77,7 +77,7 @@ export function RunConfigButton({
       {selected?.valid && selected.description ? (
         <p className="max-w-md text-right text-xs text-muted-foreground">{selected.adapter} · {selected.ruleset}</p>
       ) : null}
-      {view ? <RunProgress view={view} /> : null}
+      {view ? <RunProgress view={view} onCancel={() => void cancel()} /> : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>
   );

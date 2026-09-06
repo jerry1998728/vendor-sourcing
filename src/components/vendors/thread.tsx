@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, RefreshCw, MessageSquarePlus } from "lucide-react";
 
+import { TONE_CLASS } from "@/components/badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,12 +13,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { InteractionRow, Vendor } from "@/lib/db/schema";
 import { formatDate } from "@/lib/format";
+import { postJson } from "@/lib/shared/http";
 
-const DIRECTION_CLASS: Record<string, string> = {
-  draft: "border-border text-muted-foreground",
-  outbound: "border-border text-foreground",
-  inbound: "border-success/40 bg-success/15 text-success",
-};
+const DIRECTION_CLASS: Record<string, string> = { draft: TONE_CLASS.muted, outbound: "border-border text-foreground", inbound: TONE_CLASS.success };
 
 export function Thread({ vendor, interactions, devTools }: { vendor: Vendor; interactions: InteractionRow[]; devTools: boolean }) {
   const router = useRouter();
@@ -34,9 +32,7 @@ export function Thread({ vendor, interactions, devTools }: { vendor: Vendor; int
     setPolling(true);
     setError(null);
     try {
-      const res = await fetch("/api/track/poll", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ vendor_id: vendor.vendor_id }) });
-      const data = (await res.json()) as { error?: string; new_inbound?: number; applied?: number; proposals?: number; errors?: string[] };
-      if (!res.ok) throw new Error(data.error ?? `poll failed (${res.status})`);
+      const data = await postJson<{ new_inbound?: number; applied?: number; proposals?: number; errors?: string[] }>("/api/track/poll", { vendor_id: vendor.vendor_id });
       setNote(`Polled: ${data.new_inbound ?? 0} new inbound, ${data.applied ?? 0} applied, ${data.proposals ?? 0} proposals${data.errors?.length ? `; ${data.errors.join("; ")}` : ""}`);
       router.refresh();
     } catch (err) {
@@ -50,9 +46,7 @@ export function Thread({ vendor, interactions, devTools }: { vendor: Vendor; int
     setSimulating(true);
     setError(null);
     try {
-      const res = await fetch("/api/track/simulate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ vendor_id: vendor.vendor_id, subject, body }) });
-      const data = (await res.json()) as { error?: string; applied?: boolean; proposal_id?: number | null; replied?: boolean; inference?: { summary: string; action: string; reason: string } | null };
-      if (!res.ok) throw new Error(data.error ?? `simulate failed (${res.status})`);
+      const data = await postJson<{ applied?: boolean; proposal_id?: number | null; replied?: boolean; inference?: { summary: string; action: string; reason: string } | null }>("/api/track/simulate", { vendor_id: vendor.vendor_id, subject, body });
       setNote(`${data.replied ? "Contacted → Replied. " : ""}${data.inference ? `${data.inference.summary} [${data.inference.action}: ${data.inference.reason}]` : "no inference"}${data.proposal_id ? ` → proposal #${data.proposal_id}` : ""}`);
       setBody("");
       router.refresh();

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Download, LoaderCircle, Play, Sparkles, Upload } from "lucide-react";
 
-import { ScreenResultBadge } from "@/components/badges";
+import { SCREEN_CLASS, ScreenResultBadge } from "@/components/badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,18 +27,13 @@ import type { ConfigSummary, RulesetSummary } from "@/lib/rulesets/loader";
 import { formatPct, shortRunId } from "@/lib/format";
 
 import { RunProgress } from "./run-progress";
+import { DEFAULT_RULESETS as DEFAULT_RULESET } from "@/lib/shared/rulesets";
+import { postJson } from "@/lib/shared/http";
+
 import { RunsList } from "./runs-list";
 import { ScheduleCard } from "./schedule-card";
 import { useRun } from "./use-run";
 
-const DEFAULT_RULESET: Record<VendorType, string> = { ego_data: "ego_data_supplier@v1", code_data: "repo_owner@v1" };
-
-async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  const data = (await res.json()) as T & { error?: string };
-  if (!res.ok) throw new Error(data.error ?? `${url} failed (${res.status})`);
-  return data;
-}
 
 function VendorTypeSelect({ value, onChange, id }: { value: VendorType; onChange: (v: VendorType) => void; id: string }) {
   return (
@@ -173,7 +168,7 @@ function CustomSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
           </Button>
           {configName ? <span className="text-xs text-muted-foreground">saved as configs/{configName}.yaml</span> : null}
         </div>
-        {run.view ? <RunProgress view={run.view} align="start" /> : null}
+        {run.view ? <RunProgress view={run.view} align="start" onCancel={() => void run.cancel()} /> : null}
         {error || run.error ? <p className="text-sm text-destructive">{error ?? run.error}</p> : null}
       </CardContent>
     </Card>
@@ -269,7 +264,7 @@ function GithubSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
           </Button>
           {configName ? <span className="text-xs text-muted-foreground">saved as configs/{configName}.yaml</span> : null}
         </div>
-        {run.view ? <RunProgress view={run.view} align="start" /> : null}
+        {run.view ? <RunProgress view={run.view} align="start" onCancel={() => void run.cancel()} /> : null}
         {error || run.error ? <p className="text-sm text-destructive">{error ?? run.error}</p> : null}
       </CardContent>
     </Card>
@@ -379,9 +374,9 @@ function ManualUploadCard({ rulesets }: { rulesets: RulesetSummary[] }) {
             <div className="flex flex-wrap items-center gap-1.5 text-sm">
               <span className="font-mono text-xs text-muted-foreground">{shortRunId(result.run_id)}</span>
               <Badge variant="secondary">{result.counts.normalized ?? 0} vendors</Badge>
-              <Badge variant="outline" className="border-success/40 bg-success/15 text-success">{result.counts.pass ?? 0} pass</Badge>
-              <Badge variant="outline" className="border-warning/40 bg-warning/15 text-warning">{result.counts.unknown ?? 0} unknown</Badge>
-              <Badge variant="outline" className="border-destructive/40 bg-destructive/15 text-destructive">{result.counts.fail ?? 0} fail</Badge>
+              <Badge variant="outline" className={SCREEN_CLASS.pass}>{result.counts.pass ?? 0} pass</Badge>
+              <Badge variant="outline" className={SCREEN_CLASS.unknown}>{result.counts.unknown ?? 0} unknown</Badge>
+              <Badge variant="outline" className={SCREEN_CLASS.fail}>{result.counts.fail ?? 0} fail</Badge>
               <Badge variant="outline">coverage {formatPct(result.counts.must_field_coverage)}</Badge>
             </div>
             <ul className="divide-y rounded-lg border text-sm">

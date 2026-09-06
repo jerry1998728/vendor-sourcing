@@ -4,6 +4,7 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Download } from "lucide-react";
 
+import { SCREEN_CLASS } from "@/components/badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { VendorFilterOptions } from "@/lib/db/filters";
@@ -11,7 +12,7 @@ import type { ScreenResult, Vendor } from "@/lib/db/schema";
 import { formatPct } from "@/lib/format";
 import type { ConfigSummary } from "@/lib/rulesets/loader";
 import { cn } from "@/lib/utils";
-import { applyFiltersToParams, type VendorFilters as Filters } from "@/lib/vendor-filters";
+import { applyFiltersToParams, type VendorFilters as Filters } from "@/lib/shared/vendor-filters";
 
 import { RunConfigButton } from "./run-config-button";
 import { VendorFilters } from "./vendor-filters";
@@ -34,12 +35,6 @@ function canonical(f: Filters): string {
     .sort(([a], [b]) => a.localeCompare(b));
   return JSON.stringify(entries);
 }
-
-const SCREEN_CLASS: Record<ScreenResult, string> = {
-  pass: "border-success/40 bg-success/15 text-success",
-  unknown: "border-warning/40 bg-warning/15 text-warning",
-  fail: "border-destructive/40 bg-destructive/15 text-destructive",
-};
 
 export function VendorsTab({
   vendors,

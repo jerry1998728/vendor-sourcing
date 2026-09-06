@@ -1,5 +1,7 @@
 # First-pass codebase review
 
+> **Status (2026-09-06):** every item in the ordered list at the end was addressed on `fix/review-pass-1` (six batches, CI green at each). What stayed open by design: the schema notes (`gmail_message_id`, `proposals.decision`), evidence expiry, and the single-process deployment shape, now documented in the README.
+
 Branch `review/cto-assessment`, 2026-09-06. Written as a CTO's first look: what a new engineer hits, one feature traced end to end, then problems by category with file and line references. Line numbers refer to this branch.
 
 ## Verdict

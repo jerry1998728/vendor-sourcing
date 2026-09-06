@@ -3,10 +3,10 @@
 import * as React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { StatusBadge } from "@/components/badges";
+import { SCREEN_CLASS, StatusBadge } from "@/components/badges";
 import { ColumnVisibilityMenu, DataTable, SortableHeader } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
-import type { ScreenResult, Vendor } from "@/lib/db/schema";
+import type { Vendor } from "@/lib/db/schema";
 import { formatDate, formatPct, shortRunId } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -27,11 +27,6 @@ const MUST_LABEL: Record<string, string> = {
   license_provenance: "provenance",
 };
 
-const OUTCOME_CLASS: Record<ScreenResult, string> = {
-  pass: "border-success/40 bg-success/10 text-success",
-  unknown: "border-warning/40 bg-warning/10 text-warning",
-  fail: "border-destructive/40 bg-destructive/10 text-destructive",
-};
 
 const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 
@@ -54,7 +49,7 @@ function MustChips({ vendor }: { vendor: Vendor }) {
         <span
           key={r.field_path}
           title={r.detail}
-          className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 font-mono text-[10px] leading-4", OUTCOME_CLASS[r.outcome])}
+          className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 font-mono text-[10px] leading-4", SCREEN_CLASS[r.outcome])}
         >
           <span className="opacity-70">{MUST_LABEL[r.field_path] ?? r.field_path.replace(/_/g, " ")}</span>
           <span className="font-medium">{r.outcome === "unknown" ? "?" : formatObserved(r.field_path, r.observed)}</span>
