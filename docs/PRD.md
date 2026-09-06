@@ -1,6 +1,6 @@
 # PRD — Vendor Sourcing & Tracking (MVP v2.0)
 
-**Build window:** 2 days · **Stack:** Python 3.11 · SQLite · Streamlit · Claude API · Gmail API · PyGithub
+**Build window:** 2 days · **Stack:** Next.js (App Router, TypeScript) · Drizzle + SQLite · Tailwind + shadcn/ui · @anthropic-ai/sdk · googleapis (Gmail) · octokit
 
 ---
 
@@ -185,16 +185,16 @@ Identified ─auto─▶ Screened ─fail─▶ Rejected
  Gmail poll → infer ────────────────────┘ (interactions, proposals, events)
 ```
 
-```python
-class SourceAdapter(Protocol):
-    name: str; vendor_type: str
-    def discover(self, q: DiscoveryQuery) -> Iterable[RawRecord]: ...
-    def normalize(self, raw: RawRecord) -> tuple[VendorCandidate, list[Evidence], list[Tag]]: ...
-
-def screen(vendor, evidence, ruleset) -> tuple[ScreenResult, list[Reason]]: ...   # pure
+```ts
+interface SourceAdapter {
+  name: string; vendorType: VendorType;
+  discover(q: DiscoveryQuery): Promise<RawRecord[]>;
+  normalize(raw: RawRecord): Promise<{ vendor: VendorCandidate; evidence: Evidence[]; tags: Tag[] }>;
+}
+function screen(vendor, evidence, ruleset): { result: ScreenResult; reasons: Reason[] }   // pure
 ```
 
-Web search uses the Anthropic built-in `web_search_20250305` tool. All DB access through `db/`; SQL kept portable for a later Postgres swap.
+Layout: `src/app/(app)/{dashboard,database,outreach,vendors/[id]}` pages · `src/app/api/*` route handlers · `src/lib/{db,pipeline,adapters,rulesets,outreach,track}`. Web search uses the Anthropic built-in `web_search_20250305` tool via the SDK. All DB access through Drizzle in `src/lib/db`; schema kept Postgres-portable. Long-running jobs (runs, polls) execute in route handlers with progress rows in `runs`.
 
 ## 8. Acceptance Criteria
 
@@ -213,13 +213,13 @@ Web search uses the Anthropic built-in `web_search_20250305` tool. All DB access
 
 | Slot | Deliverable | Cut if behind |
 |---|---|---|
-| D1 AM | Schema (8 tables), state machine, config/ruleset loader, `screen()`, `web_search_llm` adapter, ego config, Vendors tab (basic table) | 8 vendors |
+| D1 AM | Drizzle schema (8 tables), state machine, config/ruleset loader, `screen()`, `web_search_llm` adapter, ego config, `/api/runs` route, app shell with sidebar + Vendors table | 8 vendors |
 | D1 PM | `github_org` adapter, repo_owner ruleset, H1b config, tags population, filters, Review Queue tab, Inputs tab (web search form, manual upload) | Drop manual upload, then tag filters; both H1 configs stay |
-| D2 AM | Gmail OAuth, draft generation, Draft & Send, Board | Manual paste to Gmail, still store thread_id |
+| D2 AM | Gmail OAuth (googleapis), draft generation, Draft & Send, Board (kanban) | Manual paste to Gmail, still store thread_id |
 | D2 PM | Poll, inference, Proposals, Vendor Detail (4 tabs), Dashboard with links, reply tests, README + demo script | Drop secondary dashboard metrics |
 | P1 (if time) | Refresh job + schedules + stale flag, follow-ups, CSV export | — |
 
-Hard rule: end of D1 = Database page populated from a config, with Review Queue working.
+Hard rule: end of D1 = `npm run dev` shows the Database page populated from a config, with Review Queue working.
 
 ## 11. Risks
 
@@ -246,7 +246,7 @@ Hard rule: end of D1 = Database page populated from a config, with Review Queue 
 | Review Queue order | coverage_confidence desc | asc | Demo must first prove the funnel surfaces good vendors |
 | Tags | All 13 dimensions in MVP | Subset with reserved schema | No migration later; filters are cheap once the table exists |
 | Discovery channels | LLM web search + GitHub API + manual CSV | Crawlers, company-data APIs | Tens of vendors, not thousands; crawlers cost maintenance and company APIs don't answer qualification fields |
-| Storage | SQLite, portable SQL | Supabase/Postgres | Zero setup, runs from `git clone`; Postgres is the multi-user next step |
-| UI | Streamlit sidebar pages | React | Budget; the queue and board are the product |
+| Storage | SQLite via Drizzle, portable schema | Supabase/Postgres | Zero setup, runs from `git clone`; Postgres is a driver swap |
+| UI | Next.js + shadcn single stack | Python backend + separate React, or Streamlit | One codebase, one process, app-grade UI; Streamlit reads as a notebook |
 
 **Assumed stakeholder decisions** — listed in §2; each is reversible via config and should be confirmed with the hiring manager before Phase 2.
