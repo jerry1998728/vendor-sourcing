@@ -1,12 +1,15 @@
 /**
- * Gmail via googleapis. OAuth desktop flow: GET /api/gmail/auth redirects to
+ * Gmail via @googleapis/gmail. OAuth desktop flow: GET /api/gmail/auth redirects to
  * Google, GET /api/gmail/callback exchanges the code and persists token.json
  * (repo root, gitignored). Everything here is server-only.
  */
 import fs from "node:fs";
 import path from "node:path";
-import { gmail, type gmail_v1 } from "@googleapis/gmail";
-import { OAuth2Client, type Credentials } from "google-auth-library";
+import { auth, gmail, type gmail_v1 } from "@googleapis/gmail";
+
+// Use the auth client bundled with the Gmail package so there is one copy of its types.
+type OAuth2Client = InstanceType<typeof auth.OAuth2>;
+type Credentials = Parameters<OAuth2Client["setCredentials"]>[0];
 
 import { htmlToText } from "@/lib/llm/fetchPage";
 
@@ -63,7 +66,7 @@ export function callbackUrl(origin: string): string {
 
 function oauthClient(origin?: string): OAuth2Client {
   const c = loadClientCredentials();
-  return new OAuth2Client({ clientId: c.client_id, clientSecret: c.client_secret, redirectUri: origin ? callbackUrl(origin) : undefined });
+  return new auth.OAuth2(c.client_id, c.client_secret, origin ? callbackUrl(origin) : undefined);
 }
 
 /** Desktop clients accept any http://localhost:<port>/<path> redirect, so the callback route works as-is. */
