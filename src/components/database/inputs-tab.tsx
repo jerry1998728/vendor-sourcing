@@ -30,9 +30,18 @@ import { RunProgress } from "./run-progress";
 import { DEFAULT_RULESETS as DEFAULT_RULESET } from "@/lib/shared/rulesets";
 import { postJson } from "@/lib/shared/http";
 
+import { LanguageSelect } from "./language-select";
+import { NewRulesetDialog } from "./new-ruleset-dialog";
 import { RunsList } from "./runs-list";
 import { ScheduleCard } from "./schedule-card";
 import { useRun } from "./use-run";
+
+const REQUIREMENT_MIN = 10;
+
+/** Why a button is disabled, next to it, so an inactive control never reads as broken. */
+function Hint({ children }: { children: React.ReactNode }) {
+  return <span className="text-xs text-muted-foreground">{children}</span>;
+}
 
 
 function VendorTypeSelect({ value, onChange, id }: { value: VendorType; onChange: (v: VendorType) => void; id: string }) {
@@ -53,16 +62,19 @@ function VendorTypeSelect({ value, onChange, id }: { value: VendorType; onChange
 function RulesetSelect({ rulesets, vendorType, value, onChange, id }: { rulesets: RulesetSummary[]; vendorType: VendorType; value: string; onChange: (v: string) => void; id: string }) {
   const options = rulesets.filter((r) => r.valid && r.vendor_type === vendorType);
   return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger id={id} className="w-56" aria-label="Ruleset">
-        <SelectValue placeholder="Ruleset" />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((r) => (
-          <SelectItem key={r.ref} value={r.ref}>{r.ref}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="flex items-center gap-1.5">
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger id={id} className="w-56" aria-label="Ruleset">
+          <SelectValue placeholder="Ruleset" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((r) => (
+            <SelectItem key={r.ref} value={r.ref}>{r.ref}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <NewRulesetDialog cloneFrom={value} onCreated={onChange} />
+    </div>
   );
 }
 
@@ -123,13 +135,16 @@ function CustomSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
   };
 
   const queryCount = queries.split("\n").filter((q) => q.trim()).length;
+  const requirementOk = requirement.trim().length >= REQUIREMENT_MIN;
+  const generateHint = requirementOk ? null : `Describe the requirement first (${REQUIREMENT_MIN}+ characters)`;
+  const saveHint = !requirementOk ? `Requirement needs ${REQUIREMENT_MIN}+ characters` : queryCount === 0 ? "Add at least one seed query" : null;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Custom web search</CardTitle>
         <CardDescription>
-          Describe the vendors you want; Claude proposes seed queries you can edit. Running saves a new config under configs/, so the search is repeatable.
+          Seed queries are the web searches a run executes: each one goes to Claude&apos;s web search tool and every result domain becomes a candidate vendor, so varied queries find more vendors. Describe the requirement, let Generate propose eight, then edit or add your own. Saving writes configs/&lt;name&gt;.yaml so the search is repeatable.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -152,20 +167,24 @@ function CustomSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
           <Textarea id="ws-requirement" rows={3} value={requirement} onChange={(e) => setRequirement(e.target.value)} placeholder="e.g. Companies collecting first-person video with stereo rigs for robotics training, outside China." />
         </div>
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <Label htmlFor="ws-queries">Seed queries (one per line, {queryCount})</Label>
-            <Button type="button" variant="outline" size="sm" onClick={() => void generate()} disabled={generating || requirement.trim().length < 10}>
-              {generating ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
-              Generate seed queries
-            </Button>
+            <span className="flex items-center gap-2">
+              {!generating && generateHint ? <Hint>{generateHint}</Hint> : null}
+              <Button type="button" variant="outline" size="sm" onClick={() => void generate()} disabled={generating || !requirementOk} title={generateHint ?? "Ask Claude for eight seed queries"}>
+                {generating ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
+                Generate seed queries
+              </Button>
+            </span>
           </div>
           <Textarea id="ws-queries" rows={6} value={queries} onChange={(e) => setQueries(e.target.value)} placeholder="Generate or type queries, one per line" className="font-mono text-xs" />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" onClick={() => void saveAndRun()} disabled={saving || run.busy || queryCount === 0 || requirement.trim().length < 10}>
+          <Button type="button" onClick={() => void saveAndRun()} disabled={saving || run.busy || !!saveHint} title={saveHint ?? "Write the config and start a run"}>
             {saving || run.busy ? <LoaderCircle className="animate-spin" /> : <Play />}
             Save config &amp; run
           </Button>
+          {!saving && !run.busy && saveHint ? <Hint>{saveHint}</Hint> : null}
           {configName ? <span className="text-xs text-muted-foreground">saved as configs/{configName}.yaml</span> : null}
         </div>
         {run.view ? <RunProgress view={run.view} align="start" onCancel={() => void run.cancel()} /> : null}
@@ -181,7 +200,7 @@ function CustomSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
 
 function GithubSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
   const [ruleset, setRuleset] = React.useState(DEFAULT_RULESET.code_data);
-  const [languages, setLanguages] = React.useState("Python, TypeScript, Go");
+  const [languages, setLanguages] = React.useState<string[]>(["Python", "TypeScript", "Go"]);
   const [minPrs, setMinPrs] = React.useState(200);
   const [windowDays, setWindowDays] = React.useState(90);
   const [minStars, setMinStars] = React.useState(300);
@@ -200,7 +219,7 @@ function GithubSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
         kind: "github",
         vendor_type: "code_data",
         ruleset,
-        languages: languages.split(",").map((l) => l.trim()).filter(Boolean),
+        languages,
         min_merged_prs: minPrs,
         activity_window_days: windowDays,
         min_stars: minStars,
@@ -225,17 +244,15 @@ function GithubSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="gh-languages">Languages</Label>
+          <LanguageSelect id="gh-languages" value={languages} onChange={setLanguages} />
+        </div>
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex min-w-64 flex-1 flex-col gap-1.5">
-            <Label htmlFor="gh-languages">Languages (comma separated)</Label>
-            <Input id="gh-languages" value={languages} onChange={(e) => setLanguages(e.target.value)} />
-          </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="gh-ruleset">Ruleset</Label>
             <RulesetSelect id="gh-ruleset" rulesets={rulesets} vendorType="code_data" value={ruleset} onChange={setRuleset} />
           </div>
-        </div>
-        <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="gh-prs">Min merged PRs</Label>
             <Input id="gh-prs" type="number" min={0} className="w-28" value={minPrs} onChange={(e) => setMinPrs(Number(e.target.value) || 0)} />
@@ -258,10 +275,11 @@ function GithubSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
           <Input id="gh-exclude" value={exclude} onChange={(e) => setExclude(e.target.value)} />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" onClick={() => void saveAndRun()} disabled={saving || run.busy || !languages.trim()}>
+          <Button type="button" onClick={() => void saveAndRun()} disabled={saving || run.busy || languages.length === 0} title={languages.length === 0 ? "Pick at least one language" : "Write the config and start a run"}>
             {saving || run.busy ? <LoaderCircle className="animate-spin" /> : <Play />}
             Save config &amp; run
           </Button>
+          {!saving && !run.busy && languages.length === 0 ? <Hint>Pick at least one language</Hint> : null}
           {configName ? <span className="text-xs text-muted-foreground">saved as configs/{configName}.yaml</span> : null}
         </div>
         {run.view ? <RunProgress view={run.view} align="start" onCancel={() => void run.cancel()} /> : null}
