@@ -8,7 +8,7 @@ import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 
 import { getDb, nowIso, type Db } from "@/lib/db";
 import { insertInteraction } from "@/lib/db/queries";
-import { interactions, proposals, vendors, type Vendor } from "@/lib/db/schema";
+import { interactions, proposals, vendors, type InteractionRow, type Vendor } from "@/lib/db/schema";
 import { TransitionError, transition } from "@/lib/db/state";
 import { listThreadMessages, profile } from "@/lib/outreach/gmail";
 import { unknownMustFields } from "@/lib/shared/must-fields";
@@ -58,85 +58,45 @@ export type IngestOptions = {
   inferFn?: (input: InferenceInput) => Promise<Inference>;
 };
 
-/** One inbound message through the whole pipeline; used by the poller and by the simulate route. */
-export async function ingestInbound(vendorId: string, message: InboundMessage, opts: IngestOptions = {}, db: Db = getDb()): Promise<IngestResult> {
-  const vendor = db.select().from(vendors).where(eq(vendors.vendor_id, vendorId)).get();
-  if (!vendor) throw new Error(`vendor ${vendorId} not found`);
-  const body = stripQuotedReply(message.body_text) || message.body_text.trim();
-  const now = nowIso();
-
-  const { interaction, replied } = db.transaction((tx) => {
+/** I/O: store the inbound message, move Contacted -> Replied on the first one, set the human's next action. */
+export function recordInbound(db: Db, vendor: Vendor, message: InboundMessage, body: string, now: string): { interaction: InteractionRow; replied: boolean } {
+  return db.transaction((tx) => {
     const row = insertInteraction(
-      {
-        vendor_id: vendorId,
-        direction: "inbound",
-        gmail_thread_id: message.thread_id,
-        sent_at: message.sent_at,
-        subject: message.subject,
-        body_text: body,
-        llm_summary: null,
-      },
+      { vendor_id: vendor.vendor_id, direction: "inbound", gmail_thread_id: message.thread_id, sent_at: message.sent_at, subject: message.subject, body_text: body, llm_summary: null },
       tx,
     );
-    let repliedNow = false;
+    let replied = false;
     if (vendor.status === "Contacted") {
-      transition({ vendorId, toStatus: "Replied", actor: "system", reason: "first inbound reply", evidenceRef: `interaction:${row.interaction_id}` }, tx);
-      repliedNow = true;
+      transition({ vendorId: vendor.vendor_id, toStatus: "Replied", actor: "system", reason: "first inbound reply", evidenceRef: `interaction:${row.interaction_id}` }, tx);
+      replied = true;
     }
     tx.update(vendors)
       .set({ next_action: "respond", due_at: new Date(Date.now() + RESPOND_WITHIN_DAYS * 86_400_000).toISOString(), updated_at: now })
-      .where(eq(vendors.vendor_id, vendorId))
+      .where(eq(vendors.vendor_id, vendor.vendor_id))
       .run();
-    return { interaction: row, replied: repliedNow };
+    return { interaction: row, replied };
   });
+}
 
-  const result: IngestResult = { vendor_id: vendorId, interaction_id: interaction.interaction_id, replied, inference: null, applied: false, proposal_id: null };
-  if (opts.infer === false) return result;
-
-  const current = db.select().from(vendors).where(eq(vendors.vendor_id, vendorId)).get() as Vendor;
-  if (!ACTIVE.includes(current.status) || current.status === "Contacted") return result;
-
-  const lastOutbound = db
-    .select()
-    .from(interactions)
-    .where(and(eq(interactions.vendor_id, vendorId), eq(interactions.direction, "outbound")))
-    .orderBy(desc(interactions.interaction_id))
-    .get();
-
-  const input: InferenceInput = {
+/** Pure: what the model gets to look at. */
+export function buildInferenceInput(current: Vendor, message: InboundMessage, body: string, lastOutbound: InteractionRow | undefined): InferenceInput {
+  return {
     vendor: { name: current.name, vendor_type: current.vendor_type, status: current.status, stage: current.diligence_stage },
     message: { from: message.from, subject: message.subject, body, date: message.sent_at },
     lastOutbound: lastOutbound ? { subject: lastOutbound.subject, body: lastOutbound.body_text ?? "" } : null,
     unknownMustFields: unknownMustFields(current),
   };
-  let inference: Inference;
-  try {
-    inference = await (opts.inferFn ?? inferStatus)(input);
-  } catch (err) {
-    result.error = `inference failed: ${err instanceof Error ? err.message : String(err)}`;
-    return result;
-  }
-  result.inference = inference;
+}
 
-  const summary = `${inference.summary} [${inference.action}: ${inference.reason}]`;
-  db.update(interactions).set({ llm_summary: summary }).where(eq(interactions.interaction_id, interaction.interaction_id)).run();
-
-  const propose = () => {
-    const p = db
+/** I/O: record the inference on the interaction, then apply it or file a proposal (PRD section 6). */
+export function applyInference(db: Db, vendorId: string, interactionId: number, inference: Inference): { applied: boolean; proposal_id: number | null } {
+  db.update(interactions).set({ llm_summary: `${inference.summary} [${inference.action}: ${inference.reason}]` }).where(eq(interactions.interaction_id, interactionId)).run();
+  const propose = () =>
+    db
       .insert(proposals)
-      .values({
-        vendor_id: vendorId,
-        interaction_id: interaction.interaction_id,
-        to_status: inference.to_status,
-        to_stage: inference.to_stage,
-        confidence: inference.confidence,
-        evidence_snippet: inference.evidence_snippet,
-      })
+      .values({ vendor_id: vendorId, interaction_id: interactionId, to_status: inference.to_status, to_stage: inference.to_stage, confidence: inference.confidence, evidence_snippet: inference.evidence_snippet })
       .returning()
-      .get();
-    result.proposal_id = p.proposal_id;
-  };
-
+      .get().proposal_id;
   if (inference.action === "apply") {
     try {
       transition(
@@ -147,19 +107,42 @@ export async function ingestInbound(vendorId: string, message: InboundMessage, o
           actor: "llm_inference",
           reason: inference.summary,
           confidence: inference.confidence,
-          evidenceRef: `interaction:${interaction.interaction_id}`,
+          evidenceRef: `interaction:${interactionId}`,
           payload: { evidence_snippet: inference.evidence_snippet, model: inference.model, proposal: false },
         },
         db,
       );
-      result.applied = true;
+      return { applied: true, proposal_id: null };
     } catch (err) {
-      if (err instanceof TransitionError) propose();
-      else throw err;
+      if (err instanceof TransitionError) return { applied: false, proposal_id: propose() };
+      throw err;
     }
-  } else if (inference.action === "propose") {
-    propose();
   }
+  if (inference.action === "propose") return { applied: false, proposal_id: propose() };
+  return { applied: false, proposal_id: null };
+}
+
+/** One inbound message through the whole pipeline; used by the poller and by the simulate route. */
+export async function ingestInbound(vendorId: string, message: InboundMessage, opts: IngestOptions = {}, db: Db = getDb()): Promise<IngestResult> {
+  const vendor = db.select().from(vendors).where(eq(vendors.vendor_id, vendorId)).get();
+  if (!vendor) throw new Error(`vendor ${vendorId} not found`);
+  const body = stripQuotedReply(message.body_text) || message.body_text.trim();
+  const { interaction, replied } = recordInbound(db, vendor, message, body, nowIso());
+  const result: IngestResult = { vendor_id: vendorId, interaction_id: interaction.interaction_id, replied, inference: null, applied: false, proposal_id: null };
+  if (opts.infer === false) return result;
+
+  const current = db.select().from(vendors).where(eq(vendors.vendor_id, vendorId)).get() as Vendor;
+  if (!ACTIVE.includes(current.status) || current.status === "Contacted") return result;
+  const lastOutbound = db.select().from(interactions).where(and(eq(interactions.vendor_id, vendorId), eq(interactions.direction, "outbound"))).orderBy(desc(interactions.interaction_id)).get();
+  try {
+    result.inference = await (opts.inferFn ?? inferStatus)(buildInferenceInput(current, message, body, lastOutbound));
+  } catch (err) {
+    result.error = `inference failed: ${err instanceof Error ? err.message : String(err)}`;
+    return result;
+  }
+  const applied = applyInference(db, vendorId, interaction.interaction_id, result.inference);
+  result.applied = applied.applied;
+  result.proposal_id = applied.proposal_id;
   return result;
 }
 

@@ -120,8 +120,8 @@ export function buildFollowUpPrompt(ctx: DraftContext, opts: DraftOptions): stri
   ].join("\n");
 }
 
-export async function generateDraft(vendorId: string, db: Db = getDb(), opts: DraftOptions = {}): Promise<{ interaction: InteractionRow; check: DraftCheck; model: string }> {
-  const ctx = draftContext(vendorId, db);
+/** Model call plus validation with one retry; no database access. */
+export async function draftEmail(ctx: DraftContext, opts: DraftOptions = {}): Promise<{ out: DraftEmailOutput; check: DraftCheck; model: string }> {
   const model = modelFor("drafting");
   const client = getAnthropic();
   const followUp = opts.mode === "follow_up";
@@ -156,20 +156,27 @@ export async function generateDraft(vendorId: string, db: Db = getDb(), opts: Dr
     throw new DraftError(`draft did not meet the rules after two attempts (${feedback})`);
   }
 
-  const summary = followUp
+  return { out, check, model };
+}
+
+/** Pure: the one-line provenance stored next to the draft. */
+export function draftSummary(out: DraftEmailOutput, check: DraftCheck, model: string, opts: DraftOptions = {}): string {
+  return opts.mode === "follow_up"
     ? `follow_up_${opts.followUpKind ?? "7d"}; model=${model}`
     : `model=${model}; cites evidence ${check.citedIds.map((i) => `#${i}`).join(", ") || "-"}; asks about ${out.asked_field_paths.join(", ") || "-"}`;
-  const interaction = insertInteraction(
-    {
-      vendor_id: vendorId,
-      direction: "draft",
-      gmail_thread_id: null,
-      sent_at: null,
-      subject: out.subject.trim(),
-      body_text: out.body.trim(),
-      llm_summary: summary,
-    },
+}
+
+/** I/O: persist a validated draft as an interactions row. */
+export function storeDraft(db: Db, vendorId: string, out: DraftEmailOutput, summary: string): InteractionRow {
+  return insertInteraction(
+    { vendor_id: vendorId, direction: "draft", gmail_thread_id: null, sent_at: null, subject: out.subject.trim(), body_text: out.body.trim(), llm_summary: summary },
     db,
   );
+}
+
+export async function generateDraft(vendorId: string, db: Db = getDb(), opts: DraftOptions = {}): Promise<{ interaction: InteractionRow; check: DraftCheck; model: string }> {
+  const ctx = draftContext(vendorId, db);
+  const { out, check, model } = await draftEmail(ctx, opts);
+  const interaction = storeDraft(db, vendorId, out, draftSummary(out, check, model, opts));
   return { interaction, check, model };
 }
