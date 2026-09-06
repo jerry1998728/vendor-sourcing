@@ -1,65 +1,108 @@
-# rulesets/ego_data_supplier.v1.yaml  (PRD 6.6, assumptions A3/A4)
+# rulesets/ego_data_supplier.v1.yaml — thresholds live here, not in code (PRD §2)
 name: ego_data_supplier
 version: v1
+vendor_type: ego_data
 description: >-
-  Vendors that collect egocentric (first-person, wearable-camera) data for AI training,
-  ideally with stereo camera rigs, with the legal entity and the collection geography
-  both outside China.
+  Egocentric data suppliers. Must: stereo rig evidenced, registration and ownership outside
+  China (collection geography is a tag). Should: scene diversity and a stated scale.
 
-# Extraction catalog: what the adapter asks the LLM to find on a vendor page.
-# Every value still needs source_url + verbatim snippet or it stays verified=false.
+# Extraction catalog: what the adapter asks the LLM to find on the vendor's pages.
+# Every value still needs a source_url plus a verbatim snippet, or it stays verified=false.
 fields:
-  - path: capture.stereo_camera
-    type: boolean
+  - path: sensor_rig
+    type: enum
+    values: [stereo, mono, depth, lidar, imu, gps, eye_tracking]
     description: >-
-      true if the vendor captures egocentric/first-person data with a stereo (binocular,
-      dual-lens, e.g. ZED / RealSense / head-mounted dual camera) rig; false if the page
-      states monocular-only capture.
-  - path: entity.hq_country
+      Sensor types of the wearable capture rig, one value per sensor. "stereo" only when the
+      site explicitly states two synchronized cameras, binocular / dual-lens capture, or a
+      named stereo device (e.g. ZED, RealSense, Aria glasses' stereo cameras).
+  - path: registration_country
     type: country
-    description: Country where the vendor company is headquartered or registered (ISO 3166-1 alpha-2).
-  - path: collection.countries
-    type: list[country]
-    description: Countries where the vendor actually collects data (one entry per country, ISO alpha-2).
-  - path: collection.environment_classes
-    type: list[enum]
-    enum: [urban, suburban, highway, night, adverse_weather, indoor]
-    description: Environment classes the vendor states it collects in (one entry per class).
-  - path: dataset.size_claimed
+    description: >-
+      Country where the legal entity is registered or headquartered (imprint, legal notice,
+      "based in", address in the footer). ISO 3166-1 alpha-2.
+  - path: ownership_country
+    type: country
+    description: >-
+      Country of the ultimate owner / parent. Only when the site states ownership, e.g.
+      "a subsidiary of X", "part of the Y Group", or explicitly independent / privately
+      held / founder-owned (then use the registration country and quote that statement).
+      ISO 3166-1 alpha-2.
+  - path: parent_entity
     type: string
-    description: Stated scale of the vendor's egocentric data (hours, clips, participants, sessions).
-  - path: contact.email
+    description: Legal name of the parent company or group, if the site names one.
+  - path: collection_countries
+    type: list
+    description: Countries where the vendor actually collects egocentric data, one entry per country, ISO alpha-2.
+  - path: scene_class
+    type: enum
+    values: [urban, suburban, highway, indoor, night, adverse_weather]
+    description: Scene classes the vendor states it records in, one entry per class.
+  - path: scale
     type: string
-    description: A sales or general contact email address shown on the page.
+    description: Stated volume of egocentric data (hours, clips, participants, sessions), one entry per figure.
+  - path: modality
+    type: enum
+    values: [video, image, lidar, audio, text, multimodal]
+    description: Data modalities the vendor delivers.
+  - path: collection_type
+    type: enum
+    values: [egocentric, exocentric, simulation, synthetic, scraped, licensed_existing]
+    description: How the data is produced.
+  - path: licensing_model
+    type: enum
+    values: [exclusive, non_exclusive, per_hour, per_dataset, subscription]
+    description: Commercial model stated on the site.
+  - path: compliance
+    type: enum
+    values: [consent_documented, pii_handling, gdpr, release_forms]
+    description: Consent, privacy and release practices the site states.
+  - path: annotation
+    type: enum
+    values: [none, box_2d, box_3d, segmentation, temporal]
+    description: Annotation types offered with the data.
+  - path: delivery
+    type: enum
+    values: [api, bulk, on_prem]
+    description: Delivery mechanisms stated.
+  - path: org_type
+    type: enum
+    values: [company, foundation, individual, broker]
+    description: Kind of organisation.
+  - path: contact_email
+    type: string
+    description: A sales or general contact email printed on the site.
 
 must:
-  - key: stereo_camera                # requires source_url
-    description: Collects with a stereo camera rig.
-    field: capture.stereo_camera
-    op: is_true
-  - key: entity_outside_china
-    description: Legal entity registered outside China (A4).
-    field: entity.hq_country
-    op: not_in
-    values: [CN]
-  - key: collection_outside_china
-    description: No collection geography inside China (A4, strict reading — reversible here).
-    field: collection.countries
-    op: none_in
-    values: [CN]
+  - id: stereo_rig
+    field_path: sensor_rig
+    op: eq
+    value: stereo
+    description: Captures egocentric data with a stereo camera rig.
+  - id: registered_outside_china
+    field_path: registration_country
+    op: neq
+    value: CN
+    description: Legal entity registered outside China.
+  - id: owned_outside_china
+    field_path: ownership_country
+    op: neq
+    value: CN
+    description: Ultimate owner outside China.
 
 should:
-  - key: scene_diversity              # >=3 countries OR >=3 env classes (A3)
-    description: Diverse scenes.
-    combine: any
-    rules:
-      - field: collection.countries
+  - id: scene_diversity
+    weight: 1
+    description: At least 3 collection countries or at least 3 scene classes.
+    any_of:
+      - field_path: collection_countries
         op: count_gte
-        min: 3
-      - field: collection.environment_classes
+        value: 3
+      - field_path: scene_class
         op: count_gte
-        min: 3
-  - key: dataset_size_claimed
-    description: Vendor states a dataset scale.
-    field: dataset.size_claimed
-    op: exists
+        value: 3
+  - id: scale
+    weight: 1
+    description: The vendor states a dataset scale.
+    field_path: scale
+    op: present

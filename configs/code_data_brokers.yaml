@@ -1,11 +1,27 @@
-# configs/code_data_brokers.yaml  (H1b: vendors/brokers who resell code or repository data; PRD "cut if behind")
+# configs/code_data_brokers.yaml — H1b (PRD §1), P0
+name: code_data_brokers
+vendor_type: code_data
 adapter: web_search_llm
-vendor_type: repo_owner
-ruleset: repo_owner@v1
+ruleset: code_data_broker@v1
+description: >-
+  Brokers and data vendors that license or resell source-code / repository datasets for AI
+  training, ideally with private repositories and pull-request history.
+requirement: >-
+  Companies that license source code or software-repository datasets for training AI models:
+  licensed from rights holders (not scraped public code), including private repositories,
+  ideally with pull-request and commit history, with documented provenance.
+limit: 30
+max_results_per_query: 10
 seed_queries:
   - "source code dataset licensing vendor for LLM training"
   - "code data provider private repositories licensed for AI training"
   - "software repository data broker commercial license"
   - "company selling curated code datasets with pull request history"
-  - "code training data marketplace enterprise repositories"
-  - "proprietary codebase data licensing for foundation models"
+  - "licensed proprietary codebase data for foundation model training"
+  - "enterprise code training data marketplace repositories license"
+exclude_domains:
+  - github.com
+  - gitlab.com
+  - bitbucket.org
+  - huggingface.co
+  - kaggle.com

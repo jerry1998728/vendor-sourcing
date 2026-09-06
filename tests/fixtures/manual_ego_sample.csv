@@ -1,0 +1,6 @@
+name,primary_domain,contact_email,sensor_rig,registration_country,ownership_country,collection_countries,scene_class,scale,modality,collection_type,licensing_model,source_url,attestation,notes
+Alpine Egocentric,alpine-ego.example,sales@alpine-ego.example,stereo|imu,CH,CH,CH|AT|IT,urban|indoor|adverse_weather,700 hours,video,egocentric,non_exclusive,https://alpine-ego.example/about,false,all values on the about page
+Harbor View Data,harborview.example,,stereo,SG,,SG|MY,urban|night,,video,egocentric,,,true,ownership unknown; values attested by uploader
+Meridian Capture,meridian-capture.example,hello@meridian-capture.example,mono|depth,US,US,US,indoor,2000 clips,video,egocentric,per_dataset,https://meridian-capture.example/legal,false,monocular rig
+Savanna Vision,savanna-vision.example,,stereo,KE,,KE|TZ,urban|suburban|highway,400 hours,video,egocentric,,,false,no source and no attestation: stays unknown
+Lotus Wearables,lotus-wear.example,,stereo,CN,CN,CN,urban,3000 hours,video,egocentric,exclusive,https://lotus-wear.example/about,false,registered in China

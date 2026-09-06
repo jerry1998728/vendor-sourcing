@@ -1,80 +1,111 @@
-# rulesets/repo_owner.v1.yaml  (PRD Section 3, A1/A2 — reversible assumptions live here, not in code)
+# rulesets/repo_owner.v1.yaml — H1a: GitHub organisations whose public signals indicate
+# production-grade private codebases (PRD §2). Thresholds live here, not in code.
 name: repo_owner
 version: v1
+vendor_type: code_data
 description: >-
-  Organizations that own production-grade codebases (proxied by public GitHub activity) or brokers
-  that resell repository access, as candidates for code-data licensing.
+  Organisations that own production-grade codebases. 200 merged PRs across public repos is the
+  proxy for private-repo engineering volume; production-grade = at least 3 of CI, release tags,
+  tests directory, license, lockfile; active in the last 90 days; not a fork or tutorial org.
 
-# Extraction catalog.  github_org fills these from the API (extraction_method=api, source_url = repo or
-# org URL); web_search_llm (H1b brokers) can only fill what a website states -> mostly unknown -> outreach.
 fields:
-  - path: attributable_public_entity
-    type: boolean
-    description: true if the org/site identifies a real, attributable entity (name plus website, email, location or legal imprint).
   - path: merged_prs_public
     type: number
-    description: Merged pull requests across the org's public repos — proxy for private PR volume (proxy=true).
+    description: Merged pull requests across the organisation's public repositories (GitHub search count, proxy).
+  - path: production_signals
+    type: number
+    description: How many of ci_config, release_tags, test_directory, license, lockfile are present on the top repositories (0-5).
   - path: ci_config
     type: boolean
-    description: CI configuration present (.github/workflows, .gitlab-ci.yml, .circleci, Jenkinsfile, ...).
+    description: A CI configuration (.github/workflows or equivalent) exists on a top repository.
   - path: release_tags
     type: boolean
-    description: Releases or tags exist.
+    description: Releases or version tags exist on a top repository.
   - path: test_directory
     type: boolean
-    description: A test / tests / spec directory exists.
+    description: A tests directory exists on a top repository.
   - path: license
     type: boolean
-    description: A license is declared.
+    description: A license file is declared on a top repository.
   - path: lockfile
     type: boolean
-    description: A dependency lockfile is committed (package-lock.json, poetry.lock, Cargo.lock, go.sum, ...).
+    description: A dependency lockfile exists on a top repository.
   - path: last_commit_days
     type: number
-    description: Days since the most recent push across the org's public repos.
+    description: Days since the most recent push across the organisation's repositories.
   - path: is_fork_or_tutorial
     type: boolean
-    description: true when every public repo is a fork, tutorial, example, awesome-list or demo.
-  - path: org.public_repos
+    description: The top repositories are forks, or the organisation reads as a tutorial / awesome-list / course account.
+  - path: public_repos
     type: number
     description: Number of public repositories.
-  - path: entity.location
+  - path: stars_total
+    type: number
+    description: Stars across the sampled top repositories.
+  - path: org_type
+    type: enum
+    values: [company, foundation, individual, broker]
+    description: Kind of organisation.
+  - path: code_language
+    type: list
+    description: Primary languages across the top repositories.
+  - path: code_license
+    type: enum
+    values: [permissive, copyleft, proprietary, unknown]
+    description: License family of the top repositories.
+  - path: website
     type: string
-    description: Free-text location from the org profile or website.
-  - path: entity.website
+    description: Organisation website.
+  - path: headquarters
     type: string
-    description: Company website.
-  - path: contact.email
-    type: string
-    description: Contact email.
+    description: Location text from the organisation profile.
+  - path: registration_country
+    type: country
+    description: Country inferred from the profile location, ISO alpha-2 (proxy).
 
 must:
-  - key: attributable_public_entity          # A1: we can name who we would contract with
-    field: attributable_public_entity
-    op: is_true
-  - key: merged_prs_public                   # "200+ PRs" demoted to a public proxy (A1); confirmable only by outreach
-    field: merged_prs_public
+  - id: merged_prs
+    field_path: merged_prs_public
     op: gte
-    min: 200
-  - key: not_fork_or_tutorial                # A2: fail on fork / tutorial / awesome-list
-    field: is_fork_or_tutorial
-    op: is_false
-  - key: recently_active                     # A2: fail when last commit > 90 days
-    field: last_commit_days
+    value: 200
+    description: At least 200 merged PRs across public repositories (proxy).
+  - id: production_grade
+    field_path: production_signals
+    op: gte
+    value: 3
+    description: At least 3 of CI, release tags, tests directory, license, lockfile.
+  - id: active
+    field_path: last_commit_days
     op: lte
-    max: 90
+    value: 90
+    description: Last commit within 90 days.
+  - id: not_fork_or_tutorial
+    field_path: is_fork_or_tutorial
+    op: is_false
+    description: Not a fork or tutorial organisation.
 
 should:
-  - key: production_grade_signals            # A2: >= 3 of {ci_config, release_tags, test_directory, license, lockfile}
-    combine: min_pass
-    min_pass: 3
-    rules:
-      - {field: ci_config, op: is_true}
-      - {field: release_tags, op: is_true}
-      - {field: test_directory, op: is_true}
-      - {field: license, op: is_true}
-      - {field: lockfile, op: is_true}
-  - key: org_scale
-    field: org.public_repos
+  - id: high_volume
+    weight: 2
+    field_path: merged_prs_public
     op: gte
-    min: 5
+    value: 1000
+  - id: company
+    weight: 1
+    field_path: org_type
+    op: eq
+    value: company
+  - id: many_repos
+    weight: 1
+    field_path: public_repos
+    op: gte
+    value: 10
+  - id: popular
+    weight: 1
+    field_path: stars_total
+    op: gte
+    value: 2000
+  - id: has_website
+    weight: 1
+    field_path: website
+    op: present

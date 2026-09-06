@@ -1,14 +1,21 @@
 {
-  "id": 3,
-  "name": "ask_for_call",
-  "current_status": "Replied",
-  "current_stage": null,
-  "from": "bd@vendor.example",
-  "subject": "Re: sourcing enquiry",
-  "body": "Happy to discuss. Could we set up a 30-minute call next week? Tuesday or Wednesday afternoon CET works on our side.",
-  "expect": {
+  "name": "03_ask_for_call",
+  "vendor": {
+    "name": "Fieldframe Data",
+    "vendor_type": "ego_data",
+    "status": "Replied",
+    "stage": null
+  },
+  "message": {
+    "from": "vendor@fieldframe.example",
+    "subject": "Re: Egocentric stereo data for robotics training",
+    "body": "Hi Jerry,\n\nHappy to discuss. Could we set up a 30-minute call next week? Tuesday or Wednesday afternoon CET works on our side. I'll bring our head of data collection.\n\nBest regards,\nAnja",
+    "date": "2026-09-07T09:00:00Z"
+  },
+  "unknown_must_fields": [],
+  "expected": {
     "to_status": "In Discussion",
     "to_stage": "responded"
   },
-  "expect_route": "auto"
+  "expect_proposal": false
 }

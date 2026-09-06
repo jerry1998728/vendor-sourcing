@@ -1,0 +1,21 @@
+{
+  "name": "09_pricing_question",
+  "vendor": {
+    "name": "Fieldframe Data",
+    "vendor_type": "ego_data",
+    "status": "Replied",
+    "stage": null
+  },
+  "message": {
+    "from": "vendor@fieldframe.example",
+    "subject": "Re: Egocentric stereo data for robotics training",
+    "body": "Hello,\n\nThanks for the note. Before we go into detail, could you tell us roughly what budget range and volume (hours) you are planning for this year? That helps us propose the right package.\n\nRegards,\nSofia",
+    "date": "2026-09-07T09:00:00Z"
+  },
+  "unknown_must_fields": [],
+  "expected": {
+    "to_status": "In Discussion",
+    "to_stage": "responded"
+  },
+  "expect_proposal": false
+}

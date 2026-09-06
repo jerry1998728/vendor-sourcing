@@ -1,11 +1,38 @@
-# configs/code_data_github_orgs.yaml  (H1a: orgs whose public GitHub activity signals a large private codebase)
+# configs/code_data_github_orgs.yaml — H1a (PRD §1), P0
+name: code_data_github_orgs
+vendor_type: code_data
 adapter: github_org
-vendor_type: repo_owner
 ruleset: repo_owner@v1
-seed_queries:
-  - "topic:machine-learning language:python"
-  - "topic:fintech"
-  - "topic:developer-tools"
-  - "topic:robotics"
-  - "topic:saas platform"
-  - "topic:data-pipeline"
+description: >-
+  GitHub organisations whose public activity suggests production-grade private codebases:
+  200+ merged PRs across public repos (proxy), CI / releases / tests / license / lockfile, active
+  in the last 90 days, not forks or tutorial accounts. Capped at 50, ranked by should-score.
+requirement: >-
+  Organisations that own production-grade private codebases we could license for code-model
+  training: real engineering organisations, active, with mature repositories.
+limit: 50
+github:
+  languages: [Python, TypeScript, Go, Rust, Java]
+  min_merged_prs: 200
+  activity_window_days: 90
+  min_stars: 300
+  exclude_keywords:
+    - awesome
+    - tutorial
+    - course
+    - bootcamp
+    - example
+    - examples
+    - sample
+    - samples
+    - learn
+    - learning
+    - book
+    - curriculum
+    - interview
+    - cheatsheet
+    - dotfiles
+    - university
+    - school
+    - roadmap
+    - handbook

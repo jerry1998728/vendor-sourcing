@@ -1,14 +1,23 @@
 {
-  "id": 8,
-  "name": "partial_answer",
-  "current_status": "Replied",
-  "current_stage": null,
-  "from": "ops@vendor.example",
-  "subject": "Re: sourcing enquiry",
-  "body": "Some quick answers: we are headquartered in Munich and collect across Germany, Austria and Italy. On the stereo rig question I'm not sure yet, I will check with our hardware lead and get back to you.",
-  "expect": {
+  "name": "08_partial_answer",
+  "vendor": {
+    "name": "Fieldframe Data",
+    "vendor_type": "ego_data",
+    "status": "Replied",
+    "stage": null
+  },
+  "message": {
+    "from": "vendor@fieldframe.example",
+    "subject": "Re: Question about ownership and rig",
+    "body": "Hi Jerry,\n\nTo answer your questions: the company is registered in Germany (GmbH, Berlin) and all our rigs are stereo, two synchronised global-shutter cameras plus IMU. On the ownership question I need to check with our legal team and will come back to you next week.\n\nBest,\nJonas",
+    "date": "2026-09-07T09:00:00Z"
+  },
+  "unknown_must_fields": [
+    "ownership_country"
+  ],
+  "expected": {
     "to_status": "In Discussion",
     "to_stage": "responded"
   },
-  "expect_route": "auto"
+  "expect_proposal": false
 }

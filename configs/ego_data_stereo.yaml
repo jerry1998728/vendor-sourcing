@@ -1,13 +1,39 @@
-# configs/ego_data_stereo.yaml  (PRD 6.6)
+# configs/ego_data_stereo.yaml — P0 (PRD §1)
+name: ego_data_stereo
+vendor_type: ego_data
 adapter: web_search_llm
-vendor_type: ego_data_supplier
 ruleset: ego_data_supplier@v1
+description: >-
+  Vendors that collect and license egocentric (first-person, wearable-camera) video data
+  for AI and robotics training with stereo camera rigs, registered and owned outside China.
+
+# Plain-language requirement handed to the discovery and extraction prompts.
+requirement: >-
+  Companies that collect and license egocentric / first-person video data for AI, robotics
+  and embodied-AI training: wearable or head-mounted camera capture, ideally stereo
+  (binocular, dual-lens) rigs, with diverse scenes and collection countries. We need the
+  legal entity and its owner to be outside China; where data is collected is a tag, not a
+  filter.
+
+# Max vendor candidates normalized per run (search hits + vendors named on list pages).
+limit: 40
+max_results_per_query: 10
+
 seed_queries:
-  - "ego-centric data collection vendor stereo camera"
-  - "egocentric video data collection services company wearable camera"
-  - "first-person video dataset collection vendor for robotics training data"
-  - "stereo camera egocentric dataset provider embodied AI"
-  - "smart glasses data collection company AI training data first-person"
-  - "human demonstration video data collection vendor head-mounted stereo camera"
-  - "egocentric data acquisition services robotics foundation model"
-  - "wearable multi-camera data collection provider VR AR training datasets"
+  - "egocentric video data collection company stereo camera rig"
+  - "first-person video dataset provider for robotics training data"
+  - "wearable camera data collection services AI training egocentric"
+  - "smart glasses data collection vendor first-person video AI"
+  - "human demonstration video data collection head-mounted stereo camera company"
+  - "egocentric data acquisition services embodied AI foundation model"
+  - "stereo camera egocentric dataset licensing company"
+  - "data collection company egocentric video annotation services robotics"
+
+# Never treated as vendor candidates (on top of the adapter's built-in aggregator list).
+exclude_domains:
+  - meta.com
+  - facebook.com
+  - google.com
+  - nvidia.com
+  - apple.com
+  - microsoft.com

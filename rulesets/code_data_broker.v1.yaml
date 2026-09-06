@@ -1,0 +1,84 @@
+# rulesets/code_data_broker.v1.yaml — H1b: brokers that license or resell repository data.
+name: code_data_broker
+version: v1
+vendor_type: code_data
+description: >-
+  Vendors that license source-code / repository datasets for AI training. Must: they actually
+  offer code data, the inventory includes private (not scraped public) repositories, and the
+  licensing provenance is documented. Scale and PR history are should-signals.
+
+fields:
+  - path: offers_code_data
+    type: boolean
+    description: The vendor sells or licenses source code / repository data for AI or ML training (true/false).
+  - path: inventory_private_repos
+    type: boolean
+    description: The inventory includes private or proprietary repositories licensed from their owners, not only scraped public code.
+  - path: license_provenance
+    type: boolean
+    description: The site states that code is licensed from rights holders with documented provenance / consent.
+  - path: inventory_pr_history
+    type: boolean
+    description: Datasets include pull-request or commit history, not only snapshots.
+  - path: inventory_scale
+    type: string
+    description: Stated scale of the code inventory (repositories, pull requests, lines, tokens), one entry per figure.
+  - path: registration_country
+    type: country
+    description: Country where the legal entity is registered or headquartered. ISO alpha-2.
+  - path: ownership_country
+    type: country
+    description: Country of the ultimate owner, only when stated. ISO alpha-2.
+  - path: parent_entity
+    type: string
+    description: Parent company or group, if named.
+  - path: licensing_model
+    type: enum
+    values: [exclusive, non_exclusive, per_hour, per_dataset, subscription]
+    description: Commercial model stated on the site.
+  - path: delivery
+    type: enum
+    values: [api, bulk, on_prem]
+    description: Delivery mechanisms stated.
+  - path: code_language
+    type: list
+    description: Programming languages covered.
+  - path: code_license
+    type: enum
+    values: [permissive, copyleft, proprietary, unknown]
+    description: License family of the inventory.
+  - path: org_type
+    type: enum
+    values: [company, foundation, individual, broker]
+    description: Kind of organisation; use broker for resellers.
+  - path: contact_email
+    type: string
+    description: A sales or general contact email printed on the site.
+
+must:
+  - id: offers_code_data
+    field_path: offers_code_data
+    op: is_true
+    description: Licenses source code or repository data for training.
+  - id: private_inventory
+    field_path: inventory_private_repos
+    op: is_true
+    description: Inventory includes private / proprietary repositories.
+  - id: provenance
+    field_path: license_provenance
+    op: is_true
+    description: Documented licensing provenance.
+
+should:
+  - id: pr_history
+    weight: 2
+    field_path: inventory_pr_history
+    op: is_true
+  - id: scale
+    weight: 1
+    field_path: inventory_scale
+    op: present
+  - id: registered
+    weight: 1
+    field_path: registration_country
+    op: present

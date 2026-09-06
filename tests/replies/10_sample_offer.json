@@ -1,14 +1,21 @@
 {
-  "id": 10,
-  "name": "sample_offer",
-  "current_status": "In Discussion",
-  "current_stage": "quote_received",
-  "from": "sales@vendor.example",
-  "subject": "Sample dataset",
-  "body": "We've uploaded a 20-hour sample dataset to the shared drive for your evaluation. Let us know once you've had a look and we can arrange the full pilot.",
-  "expect": {
+  "name": "10_sample_offer",
+  "vendor": {
+    "name": "Fieldframe Data",
+    "vendor_type": "ego_data",
+    "status": "In Discussion",
+    "stage": "technical_review"
+  },
+  "message": {
+    "from": "vendor@fieldframe.example",
+    "subject": "Re: Technical review - sample data",
+    "body": "Hi,\n\nFollowing our technical discussion we can provide a free evaluation sample: 2 hours of stereo egocentric footage across 3 scenes, with calibration files and our annotation schema. If you confirm, we'll set up the transfer this week.\n\nBest,\nAnja",
+    "date": "2026-09-07T09:00:00Z"
+  },
+  "unknown_must_fields": [],
+  "expected": {
     "to_status": "In Discussion",
     "to_stage": "sampling"
   },
-  "expect_route": "proposal"
+  "expect_proposal": true
 }

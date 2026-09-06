@@ -1,14 +1,21 @@
 {
-  "id": 5,
-  "name": "out_of_office",
-  "current_status": "Replied",
-  "current_stage": null,
-  "from": "lars@vendor.example",
-  "subject": "Automatic reply: sourcing enquiry",
-  "body": "Thank you for your email. I am out of office until 14 October with limited access to email and will respond on my return.",
-  "expect": {
-    "to_status": "none",
+  "name": "05_out_of_office",
+  "vendor": {
+    "name": "Fieldframe Data",
+    "vendor_type": "ego_data",
+    "status": "Replied",
+    "stage": null
+  },
+  "message": {
+    "from": "vendor@fieldframe.example",
+    "subject": "Automatic reply: Egocentric stereo data for robotics training",
+    "body": "I am out of the office until 21 September with limited access to email. For urgent matters please contact office@fieldframe.example.\n\nKind regards,\nDavid Rowe",
+    "date": "2026-09-07T09:00:00Z"
+  },
+  "unknown_must_fields": [],
+  "expected": {
+    "to_status": "Replied",
     "to_stage": null
   },
-  "expect_route": "none"
+  "expect_proposal": false
 }

@@ -1,14 +1,21 @@
 {
-  "id": 2,
-  "name": "decline",
-  "current_status": "Replied",
-  "current_stage": null,
-  "from": "sales@vendor.example",
-  "subject": "Re: sourcing enquiry",
-  "body": "Thanks for your interest. Unfortunately we only license our data to academic partners and cannot support commercial model training.",
-  "expect": {
+  "name": "02_decline",
+  "vendor": {
+    "name": "Fieldframe Data",
+    "vendor_type": "ego_data",
+    "status": "Replied",
+    "stage": null
+  },
+  "message": {
+    "from": "vendor@fieldframe.example",
+    "subject": "Re: Egocentric stereo data for robotics training",
+    "body": "Hello,\n\nThank you for your interest. Unfortunately we do not license our data to third parties and are not taking on new partners this year. Please remove us from your list.\n\nRegards,\nTom",
+    "date": "2026-09-07T09:00:00Z"
+  },
+  "unknown_must_fields": [],
+  "expected": {
     "to_status": "Rejected",
     "to_stage": null
   },
-  "expect_route": "auto"
+  "expect_proposal": false
 }

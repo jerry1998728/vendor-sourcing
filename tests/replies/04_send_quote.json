@@ -1,14 +1,21 @@
 {
-  "id": 4,
-  "name": "send_quote",
-  "current_status": "In Discussion",
-  "current_stage": "technical_review",
-  "from": "sales@vendor.example",
-  "subject": "Quote for stereo egocentric collection",
-  "body": "As discussed, our quote: USD 11 per recorded hour including annotation, 500-hour minimum, delivery within 6 weeks. The quotation is valid for 30 days.",
-  "expect": {
+  "name": "04_send_quote",
+  "vendor": {
+    "name": "Fieldframe Data",
+    "vendor_type": "ego_data",
+    "status": "In Discussion",
+    "stage": "responded"
+  },
+  "message": {
+    "from": "vendor@fieldframe.example",
+    "subject": "Re: Egocentric stereo data - pricing",
+    "body": "Hi,\n\nAs discussed, please find our quote below:\n\n- Stereo egocentric video, indoor and urban scenes: USD 1,800 per hour of footage\n- Minimum order: 200 hours\n- Non-exclusive licence, delivery via S3 bucket\n- Annotation (segmentation) optional at USD 350 per hour\n\nThis quote is valid for 30 days. Happy to walk you through it.\n\nBest,\nMaria",
+    "date": "2026-09-07T09:00:00Z"
+  },
+  "unknown_must_fields": [],
+  "expected": {
     "to_status": "In Discussion",
     "to_stage": "quote_received"
   },
-  "expect_route": "proposal"
+  "expect_proposal": true
 }

@@ -1,14 +1,21 @@
 {
-  "id": 6,
-  "name": "request_nda",
-  "current_status": "Replied",
-  "current_stage": null,
-  "from": "legal@vendor.example",
-  "subject": "Re: sourcing enquiry",
-  "body": "Before we share collection details and sample material we'd need a mutual NDA in place. Attached is our standard non-disclosure agreement; happy to review yours instead.",
-  "expect": {
+  "name": "06_request_nda",
+  "vendor": {
+    "name": "Fieldframe Data",
+    "vendor_type": "ego_data",
+    "status": "Replied",
+    "stage": null
+  },
+  "message": {
+    "from": "vendor@fieldframe.example",
+    "subject": "Re: Egocentric stereo data for robotics training",
+    "body": "Hello,\n\nWe're interested in exploring this. Before we share details about our collection setup, scale and pricing we would need a mutual NDA in place. Could you send over your standard template, or we can share ours?\n\nThanks,\nPriya",
+    "date": "2026-09-07T09:00:00Z"
+  },
+  "unknown_must_fields": [],
+  "expected": {
     "to_status": "In Discussion",
     "to_stage": "responded"
   },
-  "expect_route": "auto"
+  "expect_proposal": false
 }

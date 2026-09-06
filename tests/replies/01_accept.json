@@ -1,14 +1,21 @@
 {
-  "id": 1,
-  "name": "accept",
-  "current_status": "Replied",
-  "current_stage": null,
-  "from": "anna@northlight-ego.example",
-  "subject": "Re: sourcing enquiry",
-  "body": "Hi Jerry, thanks for reaching out. Yes, we'd be glad to work with you on this. We collect first-person video with head-mounted rigs across Germany and France. Let me know what volumes you have in mind.",
-  "expect": {
+  "name": "01_accept",
+  "vendor": {
+    "name": "Fieldframe Data",
+    "vendor_type": "ego_data",
+    "status": "Replied",
+    "stage": null
+  },
+  "message": {
+    "from": "vendor@fieldframe.example",
+    "subject": "Re: Egocentric stereo data for robotics training",
+    "body": "Hi,\n\nThanks for reaching out. Yes, we'd be glad to work with you. Our stereo rigs and the collection programme you describe are a good fit for what you need, and we can license non-exclusively.\n\nLet me know what volume and timeline you have in mind and we can take it from there.\n\nBest,\nMaria",
+    "date": "2026-09-07T09:00:00Z"
+  },
+  "unknown_must_fields": [],
+  "expected": {
     "to_status": "In Discussion",
     "to_stage": "responded"
   },
-  "expect_route": "auto"
+  "expect_proposal": false
 }
