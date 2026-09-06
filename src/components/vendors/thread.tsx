@@ -67,7 +67,7 @@ export function Thread({ vendor, interactions, devTools }: { vendor: Vendor; int
         {!hasThread ? <span className="text-xs text-muted-foreground">No Gmail thread yet.</span> : null}
         {vendor.status === "Qualified" ? (
           <Button asChild size="sm" variant="outline">
-            <Link href="/outreach?tab=draft">Draft &amp; Send</Link>
+            <Link href="/outreach/draft">Draft &amp; Send</Link>
           </Button>
         ) : null}
         {note ? <span className="text-xs text-muted-foreground">{note}</span> : null}

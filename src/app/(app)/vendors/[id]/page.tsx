@@ -80,7 +80,7 @@ export default async function VendorPage({ params, searchParams }: Props) {
         <span className="text-muted-foreground">owner {vendor.owner ?? "unassigned"}</span>
         {vendor.next_action ? <span className="text-muted-foreground">next {vendor.next_action}</span> : null}
         {vendor.due_at ? <span className={overdue ? "font-medium text-destructive" : "text-muted-foreground"}>due {formatDate(vendor.due_at)}{overdue ? " · overdue" : ""}</span> : null}
-        <Link href={`/database?tab=vendors&q=${encodeURIComponent(vendor.name)}`} className="ml-auto text-muted-foreground underline-offset-2 hover:underline">
+        <Link href={`/database/vendors?q=${encodeURIComponent(vendor.name)}`} className="ml-auto text-muted-foreground underline-offset-2 hover:underline">
           Database
         </Link>
       </div>

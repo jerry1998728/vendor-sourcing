@@ -12,8 +12,7 @@ export async function GET(req: NextRequest) {
   const denied = url.searchParams.get("error");
   const state = url.searchParams.get("state");
   const expected = req.cookies.get(STATE_COOKIE)?.value;
-  const back = new URL("/outreach", url.origin);
-  back.searchParams.set("tab", "draft");
+  const back = new URL("/outreach/draft", url.origin);
   const redirect = () => {
     const res = NextResponse.redirect(back);
     res.cookies.delete({ name: STATE_COOKIE, path: "/api/gmail" });

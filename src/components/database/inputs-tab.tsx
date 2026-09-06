@@ -364,7 +364,7 @@ function ManualUploadCard({ rulesets }: { rulesets: RulesetSummary[] }) {
           </Button>
           {result ? (
             <Button asChild variant="link" size="sm">
-              <Link href="/database?tab=review">Open Review Queue</Link>
+              <Link href="/database/review">Open Review Queue</Link>
             </Button>
           ) : null}
         </div>

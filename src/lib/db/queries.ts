@@ -1,5 +1,5 @@
 /** Read/write helpers shared by pages, API routes and scripts. */
-import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { getDb, nowIso, type DbOrTx } from "./index";
 import {
@@ -265,4 +265,14 @@ export function countActiveThreads(db: DbOrTx = getDb()): number {
     .from(interactions)
     .where(and(eq(interactions.direction, "outbound"), isNotNull(interactions.gmail_thread_id), inArray(interactions.vendor_id, active)))
     .get()?.n ?? 0;
+}
+
+/** Badge counts for the sidebar sub-pages, keyed by href: review queue, sendable drafts, pending proposals. */
+export function sidebarCounts(db: DbOrTx = getDb()): Record<string, number> {
+  const reviewQueue = db.select({ n: count() }).from(vendors).where(eq(vendors.status, "Screened")).get()?.n ?? 0;
+  const qualified = db.select({ n: count() }).from(vendors).where(eq(vendors.status, "Qualified")).get()?.n ?? 0;
+  const silent = db.select({ vendor_id: vendors.vendor_id }).from(vendors).where(inArray(vendors.status, ["Contacted", "Dormant"])).all().map((r) => r.vendor_id);
+  const followUps = [...latestDraftsFor(silent, db).values()].filter((d) => d.llm_summary?.startsWith("follow_up")).length;
+  const pending = db.select({ n: count() }).from(proposals).where(isNull(proposals.decided_at)).get()?.n ?? 0;
+  return { "/database/review": reviewQueue, "/outreach/draft": qualified + followUps, "/outreach/proposals": pending };
 }

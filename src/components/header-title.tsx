@@ -2,14 +2,21 @@
 
 import { usePathname } from "next/navigation";
 
-import { NAV_ITEMS, isNavActive } from "@/components/nav-items";
+import { navTrail } from "@/components/nav-items";
 
 export function HeaderTitle() {
   const pathname = usePathname();
-  const current = NAV_ITEMS.find((item) => isNavActive(pathname, item.href));
+  const { section, child } = navTrail(pathname);
+  const title = section?.title ?? (pathname.startsWith("/vendors/") ? "Vendor" : "Vendor Sourcing");
   return (
-    <span className="text-sm font-medium">
-      {current?.title ?? "Vendor Sourcing"}
+    <span className="flex items-center gap-1.5 text-sm font-medium">
+      <span>{title}</span>
+      {child ? (
+        <>
+          <span className="text-muted-foreground">/</span>
+          <span>{child.title}</span>
+        </>
+      ) : null}
     </span>
   );
 }
