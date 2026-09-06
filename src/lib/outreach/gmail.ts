@@ -68,8 +68,8 @@ function oauthClient(origin?: string): OAuth2Client {
 }
 
 /** Desktop clients accept any http://localhost:<port>/<path> redirect, so the callback route works as-is. */
-export function authUrl(origin: string): string {
-  return oauthClient(origin).generateAuthUrl({ access_type: "offline", prompt: "consent", scope: GMAIL_SCOPES });
+export function authUrl(origin: string, state: string): string {
+  return oauthClient(origin).generateAuthUrl({ access_type: "offline", prompt: "consent", scope: GMAIL_SCOPES, state });
 }
 
 export async function exchangeCode(origin: string, code: string): Promise<void> {

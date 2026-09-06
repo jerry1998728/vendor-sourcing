@@ -17,6 +17,7 @@ import { getVendorDetail, listInteractions } from "@/lib/db/queries";
 import type { EvidenceRow } from "@/lib/db/schema";
 import { formatDate, formatPct } from "@/lib/format";
 import { mustFieldsFor } from "@/lib/rulesets/vendor";
+import { isDev } from "@/lib/shared/env";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,7 @@ export default async function VendorPage({ params, searchParams }: Props) {
   const interactions = listInteractions(vendorId, db);
   const must = mustFieldsFor(vendor, db);
   const latestEventId = events.length ? events[events.length - 1].event_id : null;
-  const devTools = process.env.NODE_ENV !== "production";
+  const devTools = isDev();
   const overdue = isOverdue(vendor.due_at);
 
   const attributeRows = Object.entries(vendor.attributes).flatMap(([field, value]) =>

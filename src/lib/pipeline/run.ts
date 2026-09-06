@@ -24,6 +24,7 @@ import {
 } from "@/lib/db/schema";
 import { transition } from "@/lib/db/state";
 import { emptyUsage } from "@/lib/llm/client";
+import { isDev } from "@/lib/shared/env";
 import { buildDiscoveryQuery, loadConfig, loadRuleset } from "@/lib/rulesets/loader";
 
 import { mapWithConcurrency } from "./concurrency";
@@ -42,9 +43,6 @@ const NORMALIZE_CONCURRENCY = 3;
 
 /** CLAUDE.md cost control: cap candidates by default outside a production build. */
 const DEV_CANDIDATE_LIMIT = 5;
-function isDevEnvironment(): boolean {
-  return process.env.NODE_ENV !== "production";
-}
 
 export type CreateRunOptions = {
   /** run_id whose persisted raw_records.jsonl to re-extract; skips discover(). */
@@ -74,7 +72,7 @@ export function createRun(configName: string, opts: CreateRunOptions = {}, db: D
   query.limit =
     opts.limit !== undefined
       ? Math.min(opts.limit, query.limit)
-      : isDevEnvironment()
+      : isDev()
         ? Math.min(query.limit, DEV_CANDIDATE_LIMIT)
         : query.limit;
   const run_id = newRunId();

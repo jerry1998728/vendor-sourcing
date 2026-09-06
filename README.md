@@ -71,7 +71,7 @@ The SQLite database is created and migrated on first use at `data/vendor-sourcin
 | `GMAIL_CREDENTIALS_PATH` | path to the Google OAuth desktop-client JSON, default `./credentials.json` |
 | `DEMO_ALLOWED_RECIPIENTS` | comma-separated addresses outreach may send to; anything else is rejected server-side |
 
-Optional: `ANTHROPIC_MODEL` forces one model for every task (testing only), `LLM_DISCOVER_EFFORT` / `LLM_EXTRACT_EFFORT` tune effort on models that support it, `DATABASE_PATH` moves the SQLite file.
+Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API route (any username; cron callers use `curl -u :password`), which you want before the app is reachable beyond localhost. `ANTHROPIC_MODEL` forces one model for every task (testing only), `LLM_DISCOVER_EFFORT` / `LLM_EXTRACT_EFFORT` tune effort on models that support it, `DATABASE_PATH` moves the SQLite file.
 
 ### Gmail
 

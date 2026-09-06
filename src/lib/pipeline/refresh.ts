@@ -15,6 +15,7 @@ import { evidence, runs, tags, vendors, type Run, type RunCounts, type RunPhase,
 import { recordEvent } from "@/lib/db/state";
 import { emptyUsage } from "@/lib/llm/client";
 import { loadConfig, loadRuleset } from "@/lib/rulesets/loader";
+import { isDev } from "@/lib/shared/env";
 
 import { mapWithConcurrency } from "./concurrency";
 import { writeNormalizedVendor } from "./run";
@@ -26,9 +27,6 @@ const REFRESH_CONCURRENCY = 2;
 
 export type RefreshOptions = { vendorIds?: string[]; limit?: number };
 
-function isDev(): boolean {
-  return process.env.NODE_ENV !== "production";
-}
 
 /** Vendors a config's refresh covers: same vendor_type, discovered by the config's adapter. */
 export function refreshTargets(configName: string, opts: RefreshOptions = {}, db: Db = getDb()): Vendor[] {
