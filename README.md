@@ -38,16 +38,21 @@ flowchart LR
 | Path | Role |
 |---|---|
 | `src/lib/db` | schema (8 tables), client, `state.ts` (transitions, replay, informational events), filters, metrics, queries, CSV export |
-| `src/lib/pipeline` | adapter contract and zod schemas, `screen.ts`, `run.ts` (discover → normalize → write → screen), `refresh.ts`, `manual.ts`, replay storage, cron |
+| `src/lib/shared` | client-safe helpers: filter params, must-field definition, env, email, HTTP, default rulesets |
+| `src/lib/pipeline` | adapter contract and zod schemas, `screen.ts`, `run.ts` (discover → normalize), `write.ts` (plan → apply → finalize), `refresh.ts`, `manual.ts`, replay storage, cron |
 | `src/lib/adapters` | `webSearchLlm.ts`, `githubOrg.ts` |
 | `src/lib/rulesets` | YAML loaders for configs and rulesets, config writer |
 | `src/lib/llm` | Anthropic client with per-task model routing, page fetcher |
-| `src/lib/outreach` | Gmail OAuth and send, drafts, recipient allowlist |
-| `src/lib/track` | inbound polling, status inference, follow-ups |
+| `src/lib/outreach` | Gmail OAuth, `send.ts` (the human send gate), drafts, recipient allowlist |
+| `src/lib/track` | inbound polling, status inference, proposal decisions, follow-ups |
 | `src/app/(app)` | Dashboard, Database, Outreach, `/vendors/[id]` pages |
 | `src/app/api` | route handlers: runs, refresh, schedules, inputs, vendors, proposals, gmail, track, export |
 | `configs/`, `rulesets/` | the three P0 categories |
 | `tests/` | unit and integration tests, reply fixtures, CSV fixture |
+
+## Deployment contract
+
+One long-lived Node process with a writable disk: the SQLite file, `data/runs/`, `token.json` from the OAuth callback, and YAML configs written from the Inputs tab. Discovery, refresh and polling run inside the process (`after()`), and a restart marks unfinished runs failed at boot. This is not a serverless or multi-instance shape; put `APP_PASSWORD` in front of it before it leaves localhost.
 
 ## Setup
 

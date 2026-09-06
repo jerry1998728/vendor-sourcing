@@ -3,10 +3,18 @@ import type { ScreenResult, SourceBadge, VendorStatus } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
 
 /* Status colors live only on badges (docs/THEME.md). */
-const SCREEN_CLASS: Record<ScreenResult, string> = {
-  pass: "border-success/40 bg-success/15 text-success",
-  unknown: "border-warning/40 bg-warning/15 text-warning",
-  fail: "border-destructive/40 bg-destructive/15 text-destructive",
+/** Tinted outline badges; every coloured status chip in the app derives from these four. */
+export const TONE_CLASS = {
+  success: "border-success/40 bg-success/15 text-success",
+  warning: "border-warning/40 bg-warning/15 text-warning",
+  destructive: "border-destructive/40 bg-destructive/15 text-destructive",
+  muted: "border-border text-muted-foreground",
+} as const;
+
+export const SCREEN_CLASS: Record<ScreenResult, string> = {
+  pass: TONE_CLASS.success,
+  unknown: TONE_CLASS.warning,
+  fail: TONE_CLASS.destructive,
 };
 
 export function ScreenResultBadge({

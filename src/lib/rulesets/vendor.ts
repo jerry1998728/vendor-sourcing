@@ -3,9 +3,10 @@ import { getRun } from "@/lib/db/queries";
 import type { Vendor } from "@/lib/db/schema";
 import type { Ruleset } from "@/lib/pipeline/screen";
 
+import { defaultRulesetFor } from "@/lib/shared/rulesets";
+
 import { loadRuleset } from "./loader";
 
-const DEFAULT_RULESET: Record<string, string> = { ego_data: "ego_data_supplier@v1", code_data: "repo_owner@v1" };
 
 /**
  * The ruleset a vendor was screened with (its first run's version), else the
@@ -14,7 +15,7 @@ const DEFAULT_RULESET: Record<string, string> = { ego_data: "ego_data_supplier@v
  * drafts stop asking questions.
  */
 export function rulesetForVendor(vendor: Vendor, db: DbOrTx = getDb()): Ruleset | null {
-  const ref = (vendor.first_seen_run_id ? getRun(vendor.first_seen_run_id, db)?.ruleset_version : undefined) ?? DEFAULT_RULESET[vendor.vendor_type];
+  const ref = (vendor.first_seen_run_id ? getRun(vendor.first_seen_run_id, db)?.ruleset_version : undefined) ?? defaultRulesetFor(vendor.vendor_type);
   return ref ? loadRuleset(ref) : null;
 }
 

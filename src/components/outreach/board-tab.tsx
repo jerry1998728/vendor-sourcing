@@ -10,7 +10,7 @@ import { VendorSheet } from "@/components/database/vendor-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { VendorFilterOptions } from "@/lib/db/filters";
-import { OWNER_UNASSIGNED, VENDOR_STATUSES, type VendorFilters, type VendorStatus } from "@/lib/vendor-filters";
+import { OWNER_UNASSIGNED, VENDOR_STATUSES, type VendorFilters, type VendorStatus } from "@/lib/shared/vendor-filters";
 import type { Vendor } from "@/lib/db/schema";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";

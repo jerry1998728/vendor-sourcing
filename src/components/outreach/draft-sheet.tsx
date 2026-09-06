@@ -19,14 +19,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { InteractionRow, Vendor } from "@/lib/db/schema";
 import { formatDate, formatPct } from "@/lib/format";
+import { normalizeEmail } from "@/lib/shared/email";
+import { postJson } from "@/lib/shared/http";
 import { unknownMustFields } from "@/lib/shared/must-fields";
 
 export type GmailState = { configured: boolean; connected: boolean; email?: string | null; error?: string | null };
 
-const normalize = (e: string) => {
-  const m = /<([^>]+)>/.exec(e);
-  return (m ? m[1] : e).trim().toLowerCase();
-};
 
 
 export function DraftSheet({
@@ -82,9 +80,8 @@ export function DraftSheet({
     setGenerating(true);
     setError(null);
     try {
-      const res = await fetch(`/api/vendors/${encodeURIComponent(vendor.vendor_id)}/draft`, { method: "POST" });
-      const data = (await res.json()) as { draft?: InteractionRow; model?: string; error?: string };
-      if (!res.ok || !data.draft) throw new Error(data.error ?? `draft failed (${res.status})`);
+      const data = await postJson<{ draft?: InteractionRow; model?: string }>(`/api/vendors/${encodeURIComponent(vendor.vendor_id)}/draft`);
+      if (!data.draft) throw new Error("draft failed: no draft returned");
       setSubject(data.draft.subject ?? "");
       setBody(data.draft.body_text ?? "");
       setDraftId(data.draft.interaction_id);
@@ -97,7 +94,7 @@ export function DraftSheet({
     }
   };
 
-  const recipientAllowed = allowlist.includes(normalize(to));
+  const recipientAllowed = allowlist.includes(normalizeEmail(to));
   const canSend = Boolean(vendor) && recipientAllowed && status.connected && subject.trim().length > 0 && body.trim().length > 0 && !sending && !sent;
 
   const send = async () => {
@@ -105,13 +102,13 @@ export function DraftSheet({
     setSending(true);
     setError(null);
     try {
-      const res = await fetch(`/api/vendors/${encodeURIComponent(vendor.vendor_id)}/send`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ to: to.trim(), subject: subject.trim(), body: body.trim(), draft_interaction_id: draftId ?? undefined }),
+      const data = await postJson<{ thread_id?: string; sender?: string }>(`/api/vendors/${encodeURIComponent(vendor.vendor_id)}/send`, {
+        to: to.trim(),
+        subject: subject.trim(),
+        body: body.trim(),
+        draft_interaction_id: draftId ?? undefined,
       });
-      const data = (await res.json()) as { thread_id?: string; sender?: string; error?: string };
-      if (!res.ok || !data.thread_id) throw new Error(data.error ?? `send failed (${res.status})`);
+      if (!data.thread_id) throw new Error("send failed: no thread id returned");
       setSent({ thread_id: data.thread_id, sender: data.sender ?? "" });
       router.refresh();
     } catch (err) {

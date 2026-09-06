@@ -10,11 +10,11 @@ import { listVendorsFiltered, parseVendorFilters, vendorFilterOptions, type Sear
 import { countActiveThreads, latestDraftsFor, listLlmEvents, listPendingProposals } from "@/lib/db/queries";
 import { parseAllowlist } from "@/lib/outreach/allowlist";
 import { isConfigured, isConnected } from "@/lib/outreach/gmail";
+import { singleParam as single } from "@/lib/shared/params";
 
 export const metadata: Metadata = { title: "Outreach" };
 export const dynamic = "force-dynamic";
 
-const single = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 export default async function OutreachPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;

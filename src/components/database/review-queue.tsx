@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { VendorDetail } from "@/lib/db/queries";
 import type { Vendor } from "@/lib/db/schema";
 import { formatPct } from "@/lib/format";
+import { postJson } from "@/lib/shared/http";
 
 export type QueueItem = Pick<Vendor, "vendor_id" | "name" | "vendor_type" | "screen_result" | "coverage_confidence">;
 export type { MustField } from "@/lib/rulesets/vendor";
@@ -55,9 +56,7 @@ function ReReviewList({ items }: { items: ReReviewItem[] }) {
     setBusy(vendorId);
     setError(null);
     try {
-      const res = await fetch(`/api/vendors/${encodeURIComponent(vendorId)}/next-action`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ next_action: "review" }) });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? `dismiss failed (${res.status})`);
+      await postJson(`/api/vendors/${encodeURIComponent(vendorId)}/next-action`, { next_action: "review" });
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -120,13 +119,7 @@ export function ReviewQueue({
     setBusy(label);
     setError(null);
     try {
-      const res = await fetch(`/api/vendors/${encodeURIComponent(current.vendor.vendor_id)}/transition`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? `transition failed (${res.status})`);
+      await postJson(`/api/vendors/${encodeURIComponent(current.vendor.vendor_id)}/transition`, body);
       setRejectOpen(false);
       setRejectCode("");
       setRejectNote("");

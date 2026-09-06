@@ -5,12 +5,12 @@
 import { and, asc, eq, inArray, isNull, like, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
 
 import { TAG_DIMENSION_NAMES } from "@/lib/pipeline/types";
-import { OWNER_UNASSIGNED, STALE_DAYS, type VendorFilters } from "@/lib/vendor-filters";
+import { OWNER_UNASSIGNED, STALE_DAYS, type VendorFilters } from "@/lib/shared/vendor-filters";
 
 import { getDb, type DbOrTx } from "./index";
 import { tags, vendors, type Vendor } from "./schema";
 
-export * from "@/lib/vendor-filters";
+export * from "@/lib/shared/vendor-filters";
 
 function need(x: SQL | undefined): SQL {
   if (!x) throw new Error("empty SQL condition");

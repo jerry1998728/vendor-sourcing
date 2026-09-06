@@ -13,6 +13,7 @@ import type { ScheduleWithRun } from "@/lib/db/queries";
 import { SCHEDULE_PRESETS } from "@/lib/pipeline/cron";
 import type { ConfigSummary } from "@/lib/rulesets/loader";
 import { formatDate } from "@/lib/format";
+import { postJson } from "@/lib/shared/http";
 
 import { RunProgress } from "./run-progress";
 import { useRun } from "./use-run";
@@ -31,9 +32,7 @@ function ScheduleRow({ config, schedule }: { config: ConfigSummary; schedule: Sc
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/schedules", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ config: config.name, cron, enabled }) });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? `save failed (${res.status})`);
+      await postJson("/api/schedules", { config: config.name, cron, enabled });
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

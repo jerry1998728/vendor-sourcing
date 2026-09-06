@@ -1,5 +1,6 @@
 "use client";
 
+import { SCREEN_CLASS } from "@/components/badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPct, shortRunId } from "@/lib/format";
@@ -58,9 +59,9 @@ export function RunProgress({ view, align = "end", onCancel }: { view: RunView; 
       <Badge variant="secondary">{c.discovered ?? 0} discovered</Badge>
       <Badge variant="secondary">{c.vendor_sites ?? 0} vendor sites</Badge>
       <Badge variant="secondary">{c.new_vendors ?? 0} new</Badge>
-      <Badge variant="outline" className="border-success/40 bg-success/15 text-success">{c.pass ?? 0} pass</Badge>
-      <Badge variant="outline" className="border-warning/40 bg-warning/15 text-warning">{c.unknown ?? 0} unknown</Badge>
-      <Badge variant="outline" className="border-destructive/40 bg-destructive/15 text-destructive">{c.fail ?? 0} fail</Badge>
+      <Badge variant="outline" className={SCREEN_CLASS.pass}>{c.pass ?? 0} pass</Badge>
+      <Badge variant="outline" className={SCREEN_CLASS.unknown}>{c.unknown ?? 0} unknown</Badge>
+      <Badge variant="outline" className={SCREEN_CLASS.fail}>{c.fail ?? 0} fail</Badge>
       <Badge variant="outline">coverage {formatPct(c.must_field_coverage)}</Badge>
       <Badge variant="outline">unknown rate {formatPct(c.unknown_rate)}</Badge>
     </div>

@@ -18,6 +18,7 @@ import type { EvidenceRow } from "@/lib/db/schema";
 import { formatDate, formatPct } from "@/lib/format";
 import { mustFieldsFor } from "@/lib/rulesets/vendor";
 import { isDev } from "@/lib/shared/env";
+import { singleParam as single } from "@/lib/shared/params";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: detail ? detail.vendor.name : "Vendor" };
 }
 
-const single = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 /** Kept outside the component so render stays pure (React Compiler rule). */
 function isOverdue(due: string | null): boolean {
