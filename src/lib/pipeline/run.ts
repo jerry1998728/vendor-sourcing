@@ -8,7 +8,7 @@ import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { getAdapter } from "@/lib/adapters";
 import { DEFAULT_EXCLUDED_DOMAINS } from "@/lib/adapters/webSearchLlm";
 import { getDb, nowIso, type Db, type DbOrTx } from "@/lib/db";
-import { finishRun, getRun, listRuns, updateRunCounts } from "@/lib/db/queries";
+import { finishRun, getRun, isCancelRequested, listRuns, updateRunCounts } from "@/lib/db/queries";
 import {
   evidence,
   runs,
@@ -373,7 +373,12 @@ export async function executeRun(runId: string, db: Db = getDb()): Promise<Run> 
     let unreachable = 0;
     let total = hop1.length;
 
+    let cancelled = false;
     const processOne = async (raw: RawRecord) => {
+      if (cancelled || isCancelRequested(runId, db)) {
+        cancelled = true;
+        return;
+      }
       let result: NormalizeResult;
       try {
         result = await adapter.normalize(raw, ctx);
@@ -438,7 +443,7 @@ export async function executeRun(runId: string, db: Db = getDb()): Promise<Run> 
       must_field_coverage: round3(mean(written.map((w) => w.must_field_coverage))),
       unknown_rate: round3(written.length ? written.filter((w) => w.result === "unknown").length / written.length : 0),
       llm_usage: usage,
-      progress: { phase: "done", step: normalized, total },
+      progress: { phase: cancelled ? "cancelled" : "done", step: normalized, total },
     };
     await persist("summary.json", { counts, vendors: written });
     finishRun(runId, counts, db);

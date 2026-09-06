@@ -173,7 +173,7 @@ function CustomSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
           </Button>
           {configName ? <span className="text-xs text-muted-foreground">saved as configs/{configName}.yaml</span> : null}
         </div>
-        {run.view ? <RunProgress view={run.view} align="start" /> : null}
+        {run.view ? <RunProgress view={run.view} align="start" onCancel={() => void run.cancel()} /> : null}
         {error || run.error ? <p className="text-sm text-destructive">{error ?? run.error}</p> : null}
       </CardContent>
     </Card>
@@ -269,7 +269,7 @@ function GithubSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
           </Button>
           {configName ? <span className="text-xs text-muted-foreground">saved as configs/{configName}.yaml</span> : null}
         </div>
-        {run.view ? <RunProgress view={run.view} align="start" /> : null}
+        {run.view ? <RunProgress view={run.view} align="start" onCancel={() => void run.cancel()} /> : null}
         {error || run.error ? <p className="text-sm text-destructive">{error ?? run.error}</p> : null}
       </CardContent>
     </Card>

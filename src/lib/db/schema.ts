@@ -48,7 +48,8 @@ export type RunPhase =
   | "normalizing"
   | "screening"
   | "done"
-  | "failed";
+  | "failed"
+  | "cancelled";
 
 export type RunCounts = {
   raw_records?: number;
@@ -77,6 +78,8 @@ export type RunCounts = {
   };
   progress?: {
     phase: RunPhase;
+    /** set by POST /api/runs/[id]/cancel; executors stop between vendors */
+    cancel_requested?: boolean;
     step?: number;
     total?: number;
     message?: string;

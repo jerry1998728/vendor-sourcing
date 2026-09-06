@@ -1,11 +1,12 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatPct, shortRunId } from "@/lib/format";
 
 import type { RunView } from "./use-run";
 
-export function RunProgress({ view, align = "end" }: { view: RunView; align?: "start" | "end" }) {
+export function RunProgress({ view, align = "end", onCancel }: { view: RunView; align?: "start" | "end"; onCancel?: () => void }) {
   const { run, status } = view;
   const c = run.counts;
   const p = c.progress;
@@ -13,10 +14,22 @@ export function RunProgress({ view, align = "end" }: { view: RunView; align?: "s
   if (status === "running") {
     const step = p?.step !== undefined && p?.total !== undefined ? ` ${p.step}/${p.total}` : "";
     return (
-      <p className={`text-sm text-muted-foreground ${align === "end" ? "text-right" : ""}`}>
+      <p className={`flex items-center gap-2 text-sm text-muted-foreground ${align === "end" ? "justify-end text-right" : ""}`}>
         <span className="font-mono text-xs">{shortRunId(run.run_id)}</span> · {p?.phase ?? "queued"}
         {step}
         {p?.message ? ` · ${p.message}` : ""}
+        {p?.cancel_requested ? <span className="text-warning">· stopping</span> : onCancel ? (
+          <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : null}
+      </p>
+    );
+  }
+  if (status === "cancelled") {
+    return (
+      <p className={`text-sm text-muted-foreground ${align === "end" ? "text-right" : ""}`}>
+        Run {shortRunId(run.run_id)} cancelled after {p?.step ?? 0} of {p?.total ?? "?"}.
       </p>
     );
   }

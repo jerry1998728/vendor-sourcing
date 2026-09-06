@@ -101,5 +101,17 @@ export function useRun() {
     [poll],
   );
 
-  return { view, error, busy, start, poll, resume, setError };
+  /** Ask the server to stop the run being polled; polling keeps going until it reports cancelled. */
+  const cancel = React.useCallback(async () => {
+    if (!view) return;
+    try {
+      const res = await fetch(`/api/runs/${view.run.run_id}/cancel`, { method: "POST" });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? `cancel failed (${res.status})`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [view]);
+
+  return { view, error, busy, start, poll, resume, cancel, setError };
 }

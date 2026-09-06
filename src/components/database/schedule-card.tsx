@@ -78,7 +78,7 @@ function ScheduleRow({ config, schedule }: { config: ConfigSummary; schedule: Sc
         )}
         <span className="font-mono">{cron}</span>
       </div>
-      {run.view ? <RunProgress view={run.view} align="start" /> : null}
+      {run.view ? <RunProgress view={run.view} align="start" onCancel={() => void run.cancel()} /> : null}
       {error || run.error ? <p className="text-sm text-destructive">{error ?? run.error}</p> : null}
     </li>
   );

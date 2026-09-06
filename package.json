@@ -15,7 +15,8 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "seed:sample": "tsx scripts/seed-sample.ts",
     "test:replies": "node --env-file-if-exists=.env.local --env-file-if-exists=.env --import tsx scripts/test-replies.ts",
-    "verify:run": "tsx scripts/verify-run.ts"
+    "verify:run": "tsx scripts/verify-run.ts",
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

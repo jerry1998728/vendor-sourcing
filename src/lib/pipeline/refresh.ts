@@ -10,7 +10,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { getAdapter } from "@/lib/adapters";
 import { getDb, nowIso, type Db } from "@/lib/db";
 import { RE_REVIEW } from "@/lib/db/filters";
-import { finishRun, getRun, updateRunCounts } from "@/lib/db/queries";
+import { finishRun, getRun, isCancelRequested, updateRunCounts } from "@/lib/db/queries";
 import { evidence, runs, tags, vendors, type Run, type RunCounts, type RunPhase, type Vendor } from "@/lib/db/schema";
 import { recordEvent } from "@/lib/db/state";
 import { emptyUsage } from "@/lib/llm/client";
@@ -126,7 +126,12 @@ export async function executeRefresh(runId: string, db: Db = getDb(), seams: { a
     let done = 0;
     progress("refreshing", { step: 0, total: ids.length });
 
+    let cancelled = false;
     await mapWithConcurrency(ids, REFRESH_CONCURRENCY, async (vendorId) => {
+      if (cancelled || isCancelRequested(runId, db)) {
+        cancelled = true;
+        return;
+      }
       const vendor = db.select().from(vendors).where(eq(vendors.vendor_id, vendorId)).get();
       const before = snapshot(vendorId, db);
       if (!vendor || !before) {
@@ -172,7 +177,7 @@ export async function executeRefresh(runId: string, db: Db = getDb(), seams: { a
     });
 
     await persist("summary.json", { counts, changes });
-    finishRun(runId, { ...counts, discovered: ids.length, normalized: counts.refreshed, llm_usage: ctx.usage, progress: { phase: "done", step: ids.length, total: ids.length } }, db);
+    finishRun(runId, { ...counts, discovered: ids.length, normalized: counts.refreshed, llm_usage: ctx.usage, progress: { phase: cancelled ? "cancelled" : "done", step: ids.length, total: ids.length } }, db);
     log(`done: ${JSON.stringify(counts)}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
