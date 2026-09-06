@@ -5,12 +5,11 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { google, type gmail_v1 } from "googleapis";
+import { gmail, type gmail_v1 } from "@googleapis/gmail";
+import { OAuth2Client, type Credentials } from "google-auth-library";
 
 import { htmlToText } from "@/lib/llm/fetchPage";
 
-type OAuth2Client = InstanceType<typeof google.auth.OAuth2>;
-type Credentials = Parameters<OAuth2Client["setCredentials"]>[0];
 
 export const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.send",
@@ -64,7 +63,7 @@ export function callbackUrl(origin: string): string {
 
 function oauthClient(origin?: string): OAuth2Client {
   const c = loadClientCredentials();
-  return new google.auth.OAuth2(c.client_id, c.client_secret, origin ? callbackUrl(origin) : undefined);
+  return new OAuth2Client({ clientId: c.client_id, clientSecret: c.client_secret, redirectUri: origin ? callbackUrl(origin) : undefined });
 }
 
 /** Desktop clients accept any http://localhost:<port>/<path> redirect, so the callback route works as-is. */
@@ -91,7 +90,7 @@ function authorizedClient(): OAuth2Client {
 }
 
 export function gmailClient(): gmail_v1.Gmail {
-  return google.gmail({ version: "v1", auth: authorizedClient() });
+  return gmail({ version: "v1", auth: authorizedClient() });
 }
 
 export async function profile(): Promise<{ email: string; messages_total: number | null }> {

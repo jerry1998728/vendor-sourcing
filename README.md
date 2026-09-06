@@ -68,7 +68,7 @@ The SQLite database is created and migrated on first use at `data/vendor-sourcin
 |---|---|
 | `ANTHROPIC_API_KEY` | web search discovery and extraction (claude-haiku-4-5), seed queries, email drafts and reply inference (claude-sonnet-5) |
 | `GITHUB_TOKEN` | the `github_org` adapter; read access to public repositories is enough |
-| `GMAIL_CREDENTIALS_PATH` | path to the Google OAuth desktop-client JSON, default `./credentials.json` |
+| `GMAIL_CREDENTIALS_PATH` | path to the Google OAuth desktop-client JSON, default `./credentials.json` (client: `@googleapis/gmail`) |
 | `DEMO_ALLOWED_RECIPIENTS` | comma-separated addresses outreach may send to; anything else is rejected server-side |
 
 Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API route (any username; cron callers use `curl -u :password`), which you want before the app is reachable beyond localhost. `ANTHROPIC_MODEL` forces one model for every task (testing only), `LLM_DISCOVER_EFFORT` / `LLM_EXTRACT_EFFORT` tune effort on models that support it, `DATABASE_PATH` moves the SQLite file.

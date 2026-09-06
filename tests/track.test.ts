@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 
 import { createDb, events, interactions, proposals, runs, vendors } from "@/lib/db";
 import { transition } from "@/lib/db/state";
-import { decideAction, type Inference } from "@/lib/track/infer";
+import { decideAction, type Inference, type InferenceInput } from "@/lib/track/infer";
 import { ingestInbound, stripQuotedReply } from "@/lib/track/poll";
 
 test("decideAction applies PRD §6: threshold, human-only stages, no change, illegal", () => {
@@ -112,7 +112,7 @@ test("inference receives the unknown must-fields from the last screening (shared
     .where(eq(vendors.vendor_id, "v.example"))
     .run();
   let seen: string[] | undefined;
-  const capture = async (input: Parameters<NonNullable<Parameters<typeof ingestInbound>[2]["inferFn"]>>[0]) => {
+  const capture = async (input: InferenceInput) => {
     seen = input.unknownMustFields;
     return fake({})();
   };
