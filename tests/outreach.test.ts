@@ -72,3 +72,24 @@ test("checkDraft: needs a real citation and a question per unknown must-field", 
   assert.match(prompt, /#1 sensor_rig = stereo/);
   assert.match(prompt, /ownership_country: Country of the ultimate owner/);
 });
+
+test("unknownMustFields is derived from screening, and draftContext words it from the ruleset", async () => {
+  const { unknownMustFields } = await import("@/lib/shared/must-fields");
+  const reasons = [
+    { rule_id: "stereo_rig", kind: "must" as const, field_path: "sensor_rig", outcome: "pass" as const, detail: "", observed: ["stereo"], evidence_ids: [] },
+    { rule_id: "owned_outside_china", kind: "must" as const, field_path: "ownership_country", outcome: "unknown" as const, detail: "", observed: [], evidence_ids: [] },
+    { rule_id: "scene_diversity", kind: "should" as const, field_path: "scene_class", outcome: "unknown" as const, detail: "", observed: [], evidence_ids: [] },
+  ];
+  assert.deepEqual(unknownMustFields({ screen_reasons: reasons }), ["ownership_country"]);
+
+  const { createDb, runs, vendors } = await import("@/lib/db");
+  const { draftContext } = await import("@/lib/outreach/draft");
+  const db = createDb(":memory:");
+  const now = new Date().toISOString();
+  db.insert(runs).values({ run_id: "run_x", input_type: "manual", adapter: "t", vendor_type: "ego_data", query: {}, ruleset_version: "ego_data_supplier@v1", started_at: now }).run();
+  db.insert(vendors).values({ vendor_id: "acme.example", name: "Acme", vendor_type: "ego_data", discovered_at: now, updated_at: now, first_seen_run_id: "run_x", next_action: "outreach_to_verify", screen_reasons: reasons }).run();
+  const ctx = draftContext("acme.example", db);
+  assert.deepEqual(ctx.unknownMustFields.map((f) => f.field_path), ["ownership_country"]);
+  assert.ok(ctx.unknownMustFields[0].description.length > "ownership_country".length, "description comes from the ruleset catalog");
+  assert.equal(ctx.mustAsk, true);
+});

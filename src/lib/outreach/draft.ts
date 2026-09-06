@@ -12,6 +12,7 @@ import type { EvidenceRow, InteractionRow, Vendor } from "@/lib/db/schema";
 import { getAnthropic, modelFor, supportsEffort } from "@/lib/llm/client";
 import { DraftEmailOutput } from "@/lib/pipeline/types";
 import { rulesetForVendor } from "@/lib/rulesets/vendor";
+import { unknownMustFields as unknownMustFieldPaths } from "@/lib/shared/must-fields";
 
 export class DraftError extends Error {}
 
@@ -30,13 +31,14 @@ export function draftContext(vendorId: string, db: Db = getDb()): DraftContext {
   if (!detail) throw new DraftError(`vendor ${vendorId} not found`);
   const ruleset = rulesetForVendor(detail.vendor, db);
   const evidence = detail.evidence.filter((e) => e.verified && e.value && !HIDDEN_FIELDS.has(e.field_path));
-  const verifiedPaths = new Set(evidence.map((e) => e.field_path));
-  const unknownMustFields = (ruleset?.must ?? [])
-    .filter((m) => !verifiedPaths.has(m.field_path))
-    .map((m) => ({
-      field_path: m.field_path,
-      description: ruleset?.fields.find((f) => f.path === m.field_path)?.description ?? m.description ?? m.field_path,
-    }));
+  // The set comes from the last screening (shared definition); the ruleset only supplies the wording.
+  const unknownMustFields = unknownMustFieldPaths(detail.vendor).map((field_path) => ({
+    field_path,
+    description:
+      ruleset?.fields.find((f) => f.path === field_path)?.description ??
+      ruleset?.must.find((m) => m.field_path === field_path)?.description ??
+      field_path,
+  }));
   return {
     vendor: detail.vendor,
     category: ruleset?.description ?? detail.vendor.vendor_type,

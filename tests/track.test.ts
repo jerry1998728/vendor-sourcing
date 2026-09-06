@@ -103,3 +103,19 @@ test("ingestInbound: low confidence -> proposal; revert of an applied llm event 
   assert.equal(v.status, "Replied");
   assert.equal(v.diligence_stage, null);
 });
+
+test("inference receives the unknown must-fields from the last screening (shared definition)", async () => {
+  const db = seed();
+  // seed() leaves the vendor unscreened; give it screening reasons like the write path would
+  db.update(vendors)
+    .set({ screen_reasons: [{ rule_id: "owned_outside_china", kind: "must", field_path: "ownership_country", outcome: "unknown", detail: "no evidence", observed: [], evidence_ids: [] }] })
+    .where(eq(vendors.vendor_id, "v.example"))
+    .run();
+  let seen: string[] | undefined;
+  const capture = async (input: Parameters<NonNullable<Parameters<typeof ingestInbound>[2]["inferFn"]>>[0]) => {
+    seen = input.unknownMustFields;
+    return fake({})();
+  };
+  await ingestInbound("v.example", { thread_id: "t1", sent_at: "2026-09-07T09:00:00.000Z", subject: "Re", body_text: "we are owned locally", from: "v@v.example" }, { inferFn: capture }, db);
+  assert.deepEqual(seen, ["ownership_country"]);
+});

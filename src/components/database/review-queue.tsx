@@ -50,11 +50,17 @@ export type ReReviewItem = { vendor_id: string; name: string; status: string; sc
 function ReReviewList({ items }: { items: ReReviewItem[] }) {
   const router = useRouter();
   const [busy, setBusy] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
   const dismiss = async (vendorId: string) => {
     setBusy(vendorId);
+    setError(null);
     try {
-      await fetch(`/api/vendors/${encodeURIComponent(vendorId)}/next-action`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ next_action: "review" }) });
+      const res = await fetch(`/api/vendors/${encodeURIComponent(vendorId)}/next-action`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ next_action: "review" }) });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? `dismiss failed (${res.status})`);
       router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
     }
@@ -63,6 +69,7 @@ function ReReviewList({ items }: { items: ReReviewItem[] }) {
   return (
     <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
       <p className="mb-2 font-medium">Re-review: screen result changed on refresh ({items.length})</p>
+      {error ? <p className="mb-2 text-destructive">{error}</p> : null}
       <ul className="flex flex-col gap-1">
         {items.map((v) => (
           <li key={v.vendor_id} className="flex flex-wrap items-center gap-2">

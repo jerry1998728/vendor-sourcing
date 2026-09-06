@@ -19,6 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { InteractionRow, Vendor } from "@/lib/db/schema";
 import { formatDate, formatPct } from "@/lib/format";
+import { unknownMustFields } from "@/lib/shared/must-fields";
 
 export type GmailState = { configured: boolean; connected: boolean; email?: string | null; error?: string | null };
 
@@ -27,9 +28,6 @@ const normalize = (e: string) => {
   return (m ? m[1] : e).trim().toLowerCase();
 };
 
-export function unknownMustFields(vendor: Vendor): string[] {
-  return vendor.screen_reasons.filter((r) => r.kind === "must" && r.outcome === "unknown").map((r) => r.field_path);
-}
 
 export function DraftSheet({
   vendor,

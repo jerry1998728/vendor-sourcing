@@ -11,7 +11,7 @@ import { insertInteraction } from "@/lib/db/queries";
 import { interactions, proposals, vendors, type Vendor } from "@/lib/db/schema";
 import { TransitionError, transition } from "@/lib/db/state";
 import { listThreadMessages, profile } from "@/lib/outreach/gmail";
-import { rulesetForVendor } from "@/lib/rulesets/vendor";
+import { unknownMustFields } from "@/lib/shared/must-fields";
 
 import { inferStatus, type Inference, type InferenceInput } from "./infer";
 
@@ -57,13 +57,6 @@ export type IngestOptions = {
   /** test seam: replaces the LLM call */
   inferFn?: (input: InferenceInput) => Promise<Inference>;
 };
-
-function unknownMustFields(vendor: Vendor, db: Db): string[] {
-  const ruleset = rulesetForVendor(vendor, db);
-  if (!ruleset) return [];
-  const known = new Set(Object.keys(vendor.attributes));
-  return ruleset.must.map((m) => m.field_path).filter((p) => !known.has(p));
-}
 
 /** One inbound message through the whole pipeline; used by the poller and by the simulate route. */
 export async function ingestInbound(vendorId: string, message: InboundMessage, opts: IngestOptions = {}, db: Db = getDb()): Promise<IngestResult> {
@@ -114,7 +107,7 @@ export async function ingestInbound(vendorId: string, message: InboundMessage, o
     vendor: { name: current.name, vendor_type: current.vendor_type, status: current.status, stage: current.diligence_stage },
     message: { from: message.from, subject: message.subject, body, date: message.sent_at },
     lastOutbound: lastOutbound ? { subject: lastOutbound.subject, body: lastOutbound.body_text ?? "" } : null,
-    unknownMustFields: unknownMustFields(current, db),
+    unknownMustFields: unknownMustFields(current),
   };
   let inference: Inference;
   try {
