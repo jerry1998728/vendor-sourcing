@@ -32,9 +32,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: parsed.error.issues.map((i) => i.message).join("; ") }, { status: 400 });
   }
   const input = parsed.data;
-  if (input.to_status === "Rejected" && input.reason.replace(/[^a-z0-9]/gi, "").length < 3) {
-    return NextResponse.json({ error: "Reject needs a reason" }, { status: 400 });
-  }
 
   const db = getDb();
   try {

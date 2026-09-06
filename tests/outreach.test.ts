@@ -4,6 +4,7 @@ import { test } from "node:test";
 import type { EvidenceRow } from "@/lib/db/schema";
 import { isAllowedRecipient, normalizeEmail, parseAllowlist } from "@/lib/outreach/allowlist";
 import { buildDraftPrompt, checkDraft } from "@/lib/outreach/draft";
+import type { Mailer } from "@/lib/outreach/send";
 import { buildRawMessage, encodeHeader, extractPlainText, toThreadMessage } from "@/lib/outreach/gmail";
 
 const b64url = (s: string) => Buffer.from(s, "utf8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -92,4 +93,50 @@ test("unknownMustFields is derived from screening, and draftContext words it fro
   assert.deepEqual(ctx.unknownMustFields.map((f) => f.field_path), ["ownership_country"]);
   assert.ok(ctx.unknownMustFields[0].description.length > "ownership_country".length, "description comes from the ruleset catalog");
   assert.equal(ctx.mustAsk, true);
+});
+
+test("sendOutreach: allowlist, first contact, in-thread follow-up, status gate (stub mailer)", async () => {
+  const { createDb, runs, vendors, interactions } = await import("@/lib/db");
+  const { transition } = await import("@/lib/db/state");
+  const { SendError, sendOutreach } = await import("@/lib/outreach/send");
+  const { eq } = await import("drizzle-orm");
+  const db = createDb(":memory:");
+  const now = new Date().toISOString();
+  db.insert(runs).values({ run_id: "run_x", input_type: "manual", adapter: "t", vendor_type: "ego_data", query: {}, ruleset_version: "ego_data_supplier@v1", started_at: now }).run();
+  db.insert(vendors).values({ vendor_id: "v.example", name: "V", vendor_type: "ego_data", discovered_at: now, updated_at: now, status: "Identified", first_seen_run_id: "run_x" }).run();
+  transition({ vendorId: "v.example", toStatus: "Screened", actor: "system", reason: "screened:pass" }, db);
+  const calls: { to: string; opts?: { threadId?: string } }[] = [];
+  const mailer: Mailer = {
+    profile: async () => ({ email: "me@company.example" }),
+    sendMessage: async (to, _subject, _body, opts) => {
+      calls.push({ to, opts });
+      return { threadId: "thread-1", messageId: `msg-${calls.length}` };
+    },
+  };
+  const allowlist = ["buyer@inbox.example"];
+  const input = { to: "Buyer <buyer@inbox.example>", subject: "Hi", body: "hello" };
+
+  await assert.rejects(sendOutreach("v.example", { ...input, to: "someone@else.example" }, { db, mailer, allowlist }), (e: unknown) => e instanceof SendError && e.code === "recipient_not_allowed");
+  await assert.rejects(sendOutreach("v.example", input, { db, mailer, allowlist }), (e: unknown) => e instanceof SendError && e.code === "wrong_status"); // still Screened
+  assert.equal(calls.length, 0);
+
+  transition({ vendorId: "v.example", toStatus: "Qualified", actor: "human", reason: "review" }, db);
+  const first = await sendOutreach("v.example", { ...input, draft_interaction_id: 1 }, { db, mailer, allowlist });
+  assert.equal(first.follow_up, false);
+  assert.equal(first.transition?.toStatus, "Contacted");
+  assert.equal(calls[0].to, "buyer@inbox.example");
+  assert.deepEqual(calls[0].opts, {});
+  const v1 = db.select().from(vendors).where(eq(vendors.vendor_id, "v.example")).get()!;
+  assert.equal(v1.status, "Contacted");
+  assert.equal(v1.owner, "me@company.example");
+  assert.equal(v1.contact_email, "buyer@inbox.example");
+  assert.equal(v1.next_action, "await_reply");
+  assert.ok(v1.due_at && Date.parse(v1.due_at) > Date.now());
+
+  const second = await sendOutreach("v.example", { ...input, subject: "Re: Hi" }, { db, mailer, allowlist });
+  assert.equal(second.follow_up, true);
+  assert.equal(second.transition, null);
+  assert.deepEqual(calls[1].opts, { threadId: "thread-1" });
+  assert.equal(db.select().from(vendors).where(eq(vendors.vendor_id, "v.example")).get()!.status, "Contacted");
+  assert.equal(db.select().from(interactions).where(eq(interactions.direction, "outbound")).all().length, 2);
 });

@@ -119,3 +119,22 @@ test("inference receives the unknown must-fields from the last screening (shared
   await ingestInbound("v.example", { thread_id: "t1", sent_at: "2026-09-07T09:00:00.000Z", subject: "Re", body_text: "we are owned locally", from: "v@v.example" }, { inferFn: capture }, db);
   assert.deepEqual(seen, ["ownership_country"]);
 });
+
+test("decideProposal: accept applies the transition as a human, reject only records, and a proposal is decided once", async () => {
+  const { decideProposal, ProposalError } = await import("@/lib/track/proposals");
+  const { proposals } = await import("@/lib/db");
+  const db = seed();
+  const quote = fake({ to_status: "In Discussion", to_stage: "quote_received", action: "propose", reason: "human-only stage", confidence: 0.95 });
+  const r = await ingestInbound("v.example", { thread_id: "t1", sent_at: "2026-09-07T09:00:00.000Z", subject: "Quote", body_text: "USD 1,800 per hour", from: "vendor@v.example" }, { inferFn: quote }, db);
+  const accepted = decideProposal(r.proposal_id!, "accept", undefined, db);
+  assert.equal(accepted.proposal.decided_by, "human:accepted");
+  assert.equal(accepted.transition?.toStage, "quote_received");
+  assert.equal(db.select().from(vendors).where(eq(vendors.vendor_id, "v.example")).get()!.diligence_stage, "quote_received");
+  assert.throws(() => decideProposal(r.proposal_id!, "reject", undefined, db), (e: unknown) => e instanceof ProposalError && e.code === "already_decided");
+  assert.throws(() => decideProposal(999, "accept", undefined, db), (e: unknown) => e instanceof ProposalError && e.code === "not_found");
+  const r2 = await ingestInbound("v.example", { thread_id: "t1", sent_at: "2026-09-07T10:00:00.000Z", subject: "Sample", body_text: "we can send a sample", from: "vendor@v.example" }, { inferFn: fake({ to_status: "In Discussion", to_stage: "sampling", action: "propose", reason: "human-only stage", confidence: 0.9 }) }, db);
+  const rejected = decideProposal(r2.proposal_id!, "reject", "not now", db);
+  assert.equal(rejected.proposal.decided_by, "human:rejected");
+  assert.equal(rejected.transition, null);
+  assert.equal(db.select().from(proposals).all().filter((p) => p.decided_at === null).length, 0);
+});

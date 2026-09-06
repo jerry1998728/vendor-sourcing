@@ -134,3 +134,17 @@ test("rebuildStatus throws when the vendors row disagrees with the log", () => {
   db.update(vendors).set({ status: "Approved" }).where(eq(vendors.vendor_id, v)).run();
   assert.throws(() => rebuildStatus(v, db), StateMismatchError);
 });
+
+test("rules flagged requiresReason refuse placeholder reasons", async () => {
+  const { createDb, runs, vendors } = await import("@/lib/db");
+  const { REASON_MIN_CHARS, TransitionError, transition } = await import("@/lib/db/state");
+  const db = createDb(":memory:");
+  const now = new Date().toISOString();
+  db.insert(runs).values({ run_id: "run_x", input_type: "manual", adapter: "t", vendor_type: "ego_data", query: {}, ruleset_version: "r@v1", started_at: now }).run();
+  db.insert(vendors).values({ vendor_id: "r.example", name: "R", vendor_type: "ego_data", discovered_at: now, updated_at: now, status: "Screened" }).run();
+  assert.ok(REASON_MIN_CHARS >= 3);
+  assert.throws(() => transition({ vendorId: "r.example", toStatus: "Rejected", actor: "human", reason: "x" }, db), (e: unknown) => e instanceof TransitionError && e.code === "reason_required");
+  assert.throws(() => transition({ vendorId: "r.example", toStatus: "Rejected", actor: "human", reason: "--" }, db), TransitionError);
+  const ok = transition({ vendorId: "r.example", toStatus: "Rejected", actor: "human", reason: "duplicate" }, db);
+  assert.equal(ok.toStatus, "Rejected");
+});
