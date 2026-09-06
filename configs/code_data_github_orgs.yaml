@@ -1,0 +1,11 @@
+# configs/code_data_github_orgs.yaml  (H1a: orgs whose public GitHub activity signals a large private codebase)
+adapter: github_org
+vendor_type: repo_owner
+ruleset: repo_owner@v1
+seed_queries:
+  - "topic:machine-learning language:python"
+  - "topic:fintech"
+  - "topic:developer-tools"
+  - "topic:robotics"
+  - "topic:saas platform"
+  - "topic:data-pipeline"

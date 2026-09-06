@@ -1,0 +1,14 @@
+{
+  "id": 5,
+  "name": "out_of_office",
+  "current_status": "Replied",
+  "current_stage": null,
+  "from": "lars@vendor.example",
+  "subject": "Automatic reply: sourcing enquiry",
+  "body": "Thank you for your email. I am out of office until 14 October with limited access to email and will respond on my return.",
+  "expect": {
+    "to_status": "none",
+    "to_stage": null
+  },
+  "expect_route": "none"
+}

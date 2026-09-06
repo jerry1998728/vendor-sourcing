@@ -1,0 +1,14 @@
+{
+  "id": 6,
+  "name": "request_nda",
+  "current_status": "Replied",
+  "current_stage": null,
+  "from": "legal@vendor.example",
+  "subject": "Re: sourcing enquiry",
+  "body": "Before we share collection details and sample material we'd need a mutual NDA in place. Attached is our standard non-disclosure agreement; happy to review yours instead.",
+  "expect": {
+    "to_status": "In Discussion",
+    "to_stage": "responded"
+  },
+  "expect_route": "auto"
+}

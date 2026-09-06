@@ -1,0 +1,14 @@
+{
+  "id": 10,
+  "name": "sample_offer",
+  "current_status": "In Discussion",
+  "current_stage": "quote_received",
+  "from": "sales@vendor.example",
+  "subject": "Sample dataset",
+  "body": "We've uploaded a 20-hour sample dataset to the shared drive for your evaluation. Let us know once you've had a look and we can arrange the full pilot.",
+  "expect": {
+    "to_status": "In Discussion",
+    "to_stage": "sampling"
+  },
+  "expect_route": "proposal"
+}

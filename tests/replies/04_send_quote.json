@@ -1,0 +1,14 @@
+{
+  "id": 4,
+  "name": "send_quote",
+  "current_status": "In Discussion",
+  "current_stage": "technical_review",
+  "from": "sales@vendor.example",
+  "subject": "Quote for stereo egocentric collection",
+  "body": "As discussed, our quote: USD 11 per recorded hour including annotation, 500-hour minimum, delivery within 6 weeks. The quotation is valid for 30 days.",
+  "expect": {
+    "to_status": "In Discussion",
+    "to_stage": "quote_received"
+  },
+  "expect_route": "proposal"
+}

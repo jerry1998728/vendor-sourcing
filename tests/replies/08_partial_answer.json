@@ -1,0 +1,14 @@
+{
+  "id": 8,
+  "name": "partial_answer",
+  "current_status": "Replied",
+  "current_stage": null,
+  "from": "ops@vendor.example",
+  "subject": "Re: sourcing enquiry",
+  "body": "Some quick answers: we are headquartered in Munich and collect across Germany, Austria and Italy. On the stereo rig question I'm not sure yet, I will check with our hardware lead and get back to you.",
+  "expect": {
+    "to_status": "In Discussion",
+    "to_stage": "responded"
+  },
+  "expect_route": "auto"
+}

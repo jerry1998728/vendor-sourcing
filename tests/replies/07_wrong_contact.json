@@ -1,0 +1,14 @@
+{
+  "id": 7,
+  "name": "wrong_contact",
+  "current_status": "Replied",
+  "current_stage": null,
+  "from": "info@vendor.example",
+  "subject": "Re: sourcing enquiry",
+  "body": "I'm not the right person for this. I have forwarded your email to our partnerships team; someone will get back to you.",
+  "expect": {
+    "to_status": "none",
+    "to_stage": null
+  },
+  "expect_route": "none"
+}

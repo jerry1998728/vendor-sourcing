@@ -1,0 +1,14 @@
+{
+  "id": 9,
+  "name": "technical_specs",
+  "current_status": "In Discussion",
+  "current_stage": "responded",
+  "from": "cto@vendor.example",
+  "subject": "Sensor specs",
+  "body": "Attached are the sensor specs: dual global-shutter 2MP cameras with a 12 cm baseline, IMU at 200 Hz, per-session calibration files, MP4 + JSON annotation format.",
+  "expect": {
+    "to_status": "In Discussion",
+    "to_stage": "technical_review"
+  },
+  "expect_route": "auto"
+}

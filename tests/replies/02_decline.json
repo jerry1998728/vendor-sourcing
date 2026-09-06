@@ -1,0 +1,14 @@
+{
+  "id": 2,
+  "name": "decline",
+  "current_status": "Replied",
+  "current_stage": null,
+  "from": "sales@vendor.example",
+  "subject": "Re: sourcing enquiry",
+  "body": "Thanks for your interest. Unfortunately we only license our data to academic partners and cannot support commercial model training.",
+  "expect": {
+    "to_status": "Rejected",
+    "to_stage": null
+  },
+  "expect_route": "auto"
+}

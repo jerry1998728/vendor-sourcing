@@ -1,0 +1,13 @@
+# configs/ego_data_stereo.yaml  (PRD 6.6)
+adapter: web_search_llm
+vendor_type: ego_data_supplier
+ruleset: ego_data_supplier@v1
+seed_queries:
+  - "ego-centric data collection vendor stereo camera"
+  - "egocentric video data collection services company wearable camera"
+  - "first-person video dataset collection vendor for robotics training data"
+  - "stereo camera egocentric dataset provider embodied AI"
+  - "smart glasses data collection company AI training data first-person"
+  - "human demonstration video data collection vendor head-mounted stereo camera"
+  - "egocentric data acquisition services robotics foundation model"
+  - "wearable multi-camera data collection provider VR AR training datasets"

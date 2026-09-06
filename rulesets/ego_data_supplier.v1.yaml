@@ -1,0 +1,65 @@
+# rulesets/ego_data_supplier.v1.yaml  (PRD 6.6, assumptions A3/A4)
+name: ego_data_supplier
+version: v1
+description: >-
+  Vendors that collect egocentric (first-person, wearable-camera) data for AI training,
+  ideally with stereo camera rigs, with the legal entity and the collection geography
+  both outside China.
+
+# Extraction catalog: what the adapter asks the LLM to find on a vendor page.
+# Every value still needs source_url + verbatim snippet or it stays verified=false.
+fields:
+  - path: capture.stereo_camera
+    type: boolean
+    description: >-
+      true if the vendor captures egocentric/first-person data with a stereo (binocular,
+      dual-lens, e.g. ZED / RealSense / head-mounted dual camera) rig; false if the page
+      states monocular-only capture.
+  - path: entity.hq_country
+    type: country
+    description: Country where the vendor company is headquartered or registered (ISO 3166-1 alpha-2).
+  - path: collection.countries
+    type: list[country]
+    description: Countries where the vendor actually collects data (one entry per country, ISO alpha-2).
+  - path: collection.environment_classes
+    type: list[enum]
+    enum: [urban, suburban, highway, night, adverse_weather, indoor]
+    description: Environment classes the vendor states it collects in (one entry per class).
+  - path: dataset.size_claimed
+    type: string
+    description: Stated scale of the vendor's egocentric data (hours, clips, participants, sessions).
+  - path: contact.email
+    type: string
+    description: A sales or general contact email address shown on the page.
+
+must:
+  - key: stereo_camera                # requires source_url
+    description: Collects with a stereo camera rig.
+    field: capture.stereo_camera
+    op: is_true
+  - key: entity_outside_china
+    description: Legal entity registered outside China (A4).
+    field: entity.hq_country
+    op: not_in
+    values: [CN]
+  - key: collection_outside_china
+    description: No collection geography inside China (A4, strict reading — reversible here).
+    field: collection.countries
+    op: none_in
+    values: [CN]
+
+should:
+  - key: scene_diversity              # >=3 countries OR >=3 env classes (A3)
+    description: Diverse scenes.
+    combine: any
+    rules:
+      - field: collection.countries
+        op: count_gte
+        min: 3
+      - field: collection.environment_classes
+        op: count_gte
+        min: 3
+  - key: dataset_size_claimed
+    description: Vendor states a dataset scale.
+    field: dataset.size_claimed
+    op: exists

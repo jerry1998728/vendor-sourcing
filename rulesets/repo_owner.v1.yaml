@@ -1,0 +1,80 @@
+# rulesets/repo_owner.v1.yaml  (PRD Section 3, A1/A2 — reversible assumptions live here, not in code)
+name: repo_owner
+version: v1
+description: >-
+  Organizations that own production-grade codebases (proxied by public GitHub activity) or brokers
+  that resell repository access, as candidates for code-data licensing.
+
+# Extraction catalog.  github_org fills these from the API (extraction_method=api, source_url = repo or
+# org URL); web_search_llm (H1b brokers) can only fill what a website states -> mostly unknown -> outreach.
+fields:
+  - path: attributable_public_entity
+    type: boolean
+    description: true if the org/site identifies a real, attributable entity (name plus website, email, location or legal imprint).
+  - path: merged_prs_public
+    type: number
+    description: Merged pull requests across the org's public repos — proxy for private PR volume (proxy=true).
+  - path: ci_config
+    type: boolean
+    description: CI configuration present (.github/workflows, .gitlab-ci.yml, .circleci, Jenkinsfile, ...).
+  - path: release_tags
+    type: boolean
+    description: Releases or tags exist.
+  - path: test_directory
+    type: boolean
+    description: A test / tests / spec directory exists.
+  - path: license
+    type: boolean
+    description: A license is declared.
+  - path: lockfile
+    type: boolean
+    description: A dependency lockfile is committed (package-lock.json, poetry.lock, Cargo.lock, go.sum, ...).
+  - path: last_commit_days
+    type: number
+    description: Days since the most recent push across the org's public repos.
+  - path: is_fork_or_tutorial
+    type: boolean
+    description: true when every public repo is a fork, tutorial, example, awesome-list or demo.
+  - path: org.public_repos
+    type: number
+    description: Number of public repositories.
+  - path: entity.location
+    type: string
+    description: Free-text location from the org profile or website.
+  - path: entity.website
+    type: string
+    description: Company website.
+  - path: contact.email
+    type: string
+    description: Contact email.
+
+must:
+  - key: attributable_public_entity          # A1: we can name who we would contract with
+    field: attributable_public_entity
+    op: is_true
+  - key: merged_prs_public                   # "200+ PRs" demoted to a public proxy (A1); confirmable only by outreach
+    field: merged_prs_public
+    op: gte
+    min: 200
+  - key: not_fork_or_tutorial                # A2: fail on fork / tutorial / awesome-list
+    field: is_fork_or_tutorial
+    op: is_false
+  - key: recently_active                     # A2: fail when last commit > 90 days
+    field: last_commit_days
+    op: lte
+    max: 90
+
+should:
+  - key: production_grade_signals            # A2: >= 3 of {ci_config, release_tags, test_directory, license, lockfile}
+    combine: min_pass
+    min_pass: 3
+    rules:
+      - {field: ci_config, op: is_true}
+      - {field: release_tags, op: is_true}
+      - {field: test_directory, op: is_true}
+      - {field: license, op: is_true}
+      - {field: lockfile, op: is_true}
+  - key: org_scale
+    field: org.public_repos
+    op: gte
+    min: 5

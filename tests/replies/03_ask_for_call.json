@@ -1,0 +1,14 @@
+{
+  "id": 3,
+  "name": "ask_for_call",
+  "current_status": "Replied",
+  "current_stage": null,
+  "from": "bd@vendor.example",
+  "subject": "Re: sourcing enquiry",
+  "body": "Happy to discuss. Could we set up a 30-minute call next week? Tuesday or Wednesday afternoon CET works on our side.",
+  "expect": {
+    "to_status": "In Discussion",
+    "to_stage": "responded"
+  },
+  "expect_route": "auto"
+}

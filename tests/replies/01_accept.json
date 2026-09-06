@@ -1,0 +1,14 @@
+{
+  "id": 1,
+  "name": "accept",
+  "current_status": "Replied",
+  "current_stage": null,
+  "from": "anna@northlight-ego.example",
+  "subject": "Re: sourcing enquiry",
+  "body": "Hi Jerry, thanks for reaching out. Yes, we'd be glad to work with you on this. We collect first-person video with head-mounted rigs across Germany and France. Let me know what volumes you have in mind.",
+  "expect": {
+    "to_status": "In Discussion",
+    "to_stage": "responded"
+  },
+  "expect_route": "auto"
+}
