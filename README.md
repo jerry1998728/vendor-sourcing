@@ -51,6 +51,8 @@ flowchart LR
 
 ## Setup
 
+Requires Node 22.9 or later (`better-sqlite3` ships prebuilt binaries for current Node releases; older versions need a C++ toolchain).
+
 ```bash
 npm install
 cp .env.example .env.local   # fill in the keys below
