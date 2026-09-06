@@ -10,6 +10,8 @@ process.env.RUNS_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "vendor-sourcing-te
 import { createDb, runs, vendors } from "@/lib/db";
 import { findActiveRun, isCancelRequested, markInterruptedRuns, requestCancel, runStatus } from "@/lib/db/queries";
 import { createRefresh, executeRefresh } from "@/lib/pipeline/refresh";
+import { findReplaySource } from "@/lib/pipeline/run";
+import { appendJsonl } from "@/lib/pipeline/storage";
 import { writeNormalizedVendor } from "@/lib/pipeline/run";
 import type { NormalizeResult, SourceAdapter, VendorCandidate } from "@/lib/pipeline/types";
 import { loadRuleset } from "@/lib/rulesets/loader";
@@ -65,4 +67,17 @@ test("cancel: flag is honoured between vendors and the run finishes as cancelled
   assert.equal(refreshed, 0);
   assert.equal(requestCancel(refresh.run_id, db), undefined); // finished runs cannot be cancelled
   assert.equal(db.select().from(vendors).all().length, 3);
+});
+
+test("replay source: the newest finished discovery run with a candidate file, never a refresh or a replay", async () => {
+  const db = createDb(":memory:");
+  const base = { adapter: "github_org", vendor_type: "code_data", query: { config: "code_data_github_orgs" }, ruleset_version: "repo_owner@v1" } as const;
+  const t = (h: number) => new Date(Date.UTC(2026, 8, 1, h)).toISOString();
+  db.insert(runs).values({ ...base, run_id: "run_20260901_010000_aaaaa1", input_type: "github", started_at: t(1), finished_at: t(1) }).run();
+  db.insert(runs).values({ ...base, run_id: "run_20260901_020000_bbbbb2", input_type: "github", query: { config: "code_data_github_orgs", replay_of: "run_20260901_010000_aaaaa1" }, started_at: t(2), finished_at: t(2) }).run();
+  db.insert(runs).values({ ...base, run_id: "run_20260901_030000_ccccc3", input_type: "refresh", started_at: t(3), finished_at: t(3) }).run();
+  db.insert(runs).values({ ...base, run_id: "run_20260901_040000_ddddd4", input_type: "github", started_at: t(4) }).run();
+  assert.equal(findReplaySource("code_data_github_orgs", db), undefined); // the discovery run has no file yet
+  await appendJsonl("run_20260901_010000_aaaaa1", "raw_records.jsonl", [{ url: "https://x.example" }]);
+  assert.equal(findReplaySource("code_data_github_orgs", db)?.run_id, "run_20260901_010000_aaaaa1");
 });

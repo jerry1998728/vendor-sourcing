@@ -20,7 +20,7 @@ import { buildDiscoveryQuery, loadConfig, loadRuleset } from "@/lib/rulesets/loa
 
 import { mapWithConcurrency } from "./concurrency";
 import { canonicalDomain, domainMatches } from "./ids";
-import { appendJsonl, newRunId, persistJson, readRawRecords, relativeRunDir } from "./storage";
+import { appendJsonl, hasRawRecords, newRunId, persistJson, readRawRecords, relativeRunDir } from "./storage";
 import {
   type AdapterContext,
   type NormalizeResult,
@@ -85,9 +85,11 @@ export function createRun(configName: string, opts: CreateRunOptions = {}, db: D
   return row;
 }
 
-/** Most recent finished run of a config, as a replay source. */
+/** Most recent finished discovery run of a config that still has its candidate file; refreshes and uploads never qualify. */
 export function findReplaySource(configName: string, db: Db = getDb()): Run | undefined {
-  return listRuns(db, 50).find((r) => r.query.config === configName && r.finished_at);
+  return listRuns(db, 100).find(
+    (r) => r.query.config === configName && r.finished_at && (r.input_type === "web_search" || r.input_type === "github") && !r.query.replay_of && hasRawRecords(r.run_id),
+  );
 }
 
 export { writeNormalizedVendor, type WriteOutcome } from "./write";
