@@ -6,6 +6,7 @@ import { ExternalLink } from "lucide-react";
 import { ScreenResultBadge, SourceBadgeChip, StatusBadge, badgeForEvidence } from "@/components/badges";
 import { EvidenceList } from "@/components/vendors/evidence-list";
 import { TagList } from "@/components/vendors/tag-list";
+import { BackButton } from "@/components/back-button";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { UrlTabs } from "@/components/url-tabs";
@@ -63,6 +64,7 @@ export default async function VendorPage({ params, searchParams }: Props) {
 
   return (
     <>
+      <BackButton />
       <PageHeader
         title={vendor.name}
         description={`${vendor.vendor_type} · ${vendor.vendor_id}`}
@@ -81,7 +83,7 @@ export default async function VendorPage({ params, searchParams }: Props) {
         {vendor.next_action ? <span className="text-muted-foreground">next {vendor.next_action}</span> : null}
         {vendor.due_at ? <span className={overdue ? "font-medium text-destructive" : "text-muted-foreground"}>due {formatDate(vendor.due_at)}{overdue ? " · overdue" : ""}</span> : null}
         <Link href={`/database/vendors?q=${encodeURIComponent(vendor.name)}`} className="ml-auto text-muted-foreground underline-offset-2 hover:underline">
-          Database
+          Open in Vendor Data
         </Link>
       </div>
       <UrlTabs
@@ -133,7 +135,7 @@ export default async function VendorPage({ params, searchParams }: Props) {
             label: `Evidence (${evidence.length})`,
             content: <EvidenceList evidence={evidence} showIds />,
           },
-          { value: "timeline", label: `Timeline (${events.length})`, content: <Timeline vendorId={vendor.vendor_id} events={events} latestEventId={latestEventId} /> },
+          { value: "timeline", label: `Timeline (${events.length + interactions.length})`, content: <Timeline vendor={vendor} events={events} interactions={interactions} latestEventId={latestEventId} /> },
           { value: "thread", label: `Thread (${interactions.length})`, content: <Thread vendor={vendor} interactions={interactions} devTools={devTools} /> },
         ]}
       />
