@@ -12,15 +12,25 @@ One vendor database with three data inputs and three operating surfaces.
 - **Surfaces (sidebar):** Dashboard · Database · Outreach Tracking
 - **Core:** every field value carries evidence; screening is three-valued (pass / fail / unknown); status changes only via an append-only event log.
 
-Two test configs prove generality: `ego_data_supplier` and `repo_owner`.
+Three configs, all P0: `ego_data_stereo`, `code_data_github_orgs` (H1a), `code_data_brokers` (H1b).
 
 ## 2. Problem & Assumptions
 
 | Brief | Executable definition |
 |---|---|
-| All private repos, 200+ PRs, production-grade | Orgs whose **public** signals indicate production-grade private codebases. 200 PRs = merged PRs across public repos, `proxy=true`. Production-grade = ≥3 of {CI, release tags, tests dir, license, lockfile}, last commit <90d, not fork/tutorial |
-| Ego data vendors: stereo, diverse, outside China | Must: stereo camera (evidenced), registration **and** collection outside China. Should: ≥3 countries or ≥3 scene classes. Unknown ⇒ `needs_outreach`, never rejected |
+| All private repos, 200+ PRs, production-grade | Two equal-priority sources: **H1a** orgs whose public signals indicate production-grade private codebases (200 PRs = merged PRs across public repos, `proxy=true`; production-grade = ≥3 of {CI, release tags, tests dir, license, lockfile}, last commit <90d, not fork/tutorial); **H1b** brokers reselling licensed repo data. H1a capped at 50 ranked orgs for MVP; full coverage = ranking + batch review (Phase 2) |
+| Ego data vendors: stereo, diverse, outside China | Must: stereo camera (evidenced), **registration and ownership** outside China (collection geography is a tag, not a filter). Should: ≥3 countries or ≥3 scene classes. Unknown ⇒ `needs_outreach`, never rejected |
 | "All vendors" | Out of scope; adding a category = 1 config + 1 ruleset, 0 code changes |
+
+**Assumed decisions** (not stated in the brief; assumed and flagged for confirmation)
+
+| Gap | Assumption | Applied |
+|---|---|---|
+| H1 primary source | Both H1a (orgs) and H1b (brokers) matter equally | Both configs P0 |
+| China exclusion | Ownership and registration, not collection geography | Must-fields `registration_country`, `ownership_country`; collection = tag |
+| H1a coverage | Ranked top-50 is sufficient for MVP | `github_org` cap 50, ranked by should-score |
+| Sending identity | Individual sourcer's mailbox | `owner` = sender |
+| Existing tracker | None to migrate | CSV import is a feature, not a migration |
 
 Every threshold lives in a versioned ruleset file, not code.
 
@@ -84,7 +94,8 @@ Secondary: output by source channel · stale vendor count · last run (time, cou
 
 ```
 vendors      vendor_id PK (normalized domain | slug(name)+type), name, vendor_type,
-             primary_domain, contact_email, registration_country, collection_countries JSON,
+             primary_domain, contact_email, registration_country, ownership_country, parent_entity,
+             collection_countries JSON,
              attributes JSON (verified values only), screen_result, screen_reasons JSON,
              status, diligence_stage, status_confidence, coverage_confidence,
              next_action, owner, due_at, first_seen_run_id FK, discovered_via,
@@ -203,7 +214,7 @@ Web search uses the Anthropic built-in `web_search_20250305` tool. All DB access
 | Slot | Deliverable | Cut if behind |
 |---|---|---|
 | D1 AM | Schema (8 tables), state machine, config/ruleset loader, `screen()`, `web_search_llm` adapter, ego config, Vendors tab (basic table) | 8 vendors |
-| D1 PM | `github_org` adapter, repo_owner ruleset, tags population, filters, Review Queue tab, Inputs tab (web search form, manual upload) | Drop manual upload |
+| D1 PM | `github_org` adapter, repo_owner ruleset, H1b config, tags population, filters, Review Queue tab, Inputs tab (web search form, manual upload) | Drop manual upload, then tag filters; both H1 configs stay |
 | D2 AM | Gmail OAuth, draft generation, Draft & Send, Board | Manual paste to Gmail, still store thread_id |
 | D2 PM | Poll, inference, Proposals, Vendor Detail (4 tabs), Dashboard with links, reply tests, README + demo script | Drop secondary dashboard metrics |
 | P1 (if time) | Refresh job + schedules + stale flag, follow-ups, CSV export | — |
@@ -221,9 +232,21 @@ Hard rule: end of D1 = Database page populated from a config, with Review Queue 
 | Over-confident inference | 0.85 threshold, quote/sample always human, one-click revert |
 | Test emails reach real vendors | Recipient allowlist enforced in code |
 
-## 12. Open Questions (sent to hiring manager)
-1. H1: license from orgs (H1a) or buy from brokers (H1b) — which is primary?
-2. China exclusion: registration, collection, or ownership?
-3. Sending identity: team mailbox or individual?
-4. Volume: tens or thousands per category?
-5. Existing tracker to import/export?
+## 12. Trade-offs & Decisions
+
+**Design trade-offs**
+
+| Decision | Chose | Over | Reason |
+|---|---|---|---|
+| Architecture | Stages sharing one DB, human gates | Autonomous agents | Reliability in 2 days; agents can be swapped in behind the same DB contract later |
+| Discovery | Adapter contract + pure `screen()` + versioned rulesets | Purpose-built sourcers per category | New category = config + ruleset, no code |
+| Screening | Three-valued (pass/fail/unknown) | Binary | Most ego-vendor fields are absent from the open web; binary rejects good vendors |
+| Field population | Wide recall, sparse evidenced fields | Fully populated table via inference | Sparsity is fixed by outreach; contamination is not reversible |
+| Status inference | Propose with 0.85 threshold; quote/sample always human | Auto-apply all | Wrong auto-updates destroy trust in the tracker |
+| Review Queue order | coverage_confidence desc | asc | Demo must first prove the funnel surfaces good vendors |
+| Tags | All 13 dimensions in MVP | Subset with reserved schema | No migration later; filters are cheap once the table exists |
+| Discovery channels | LLM web search + GitHub API + manual CSV | Crawlers, company-data APIs | Tens of vendors, not thousands; crawlers cost maintenance and company APIs don't answer qualification fields |
+| Storage | SQLite, portable SQL | Supabase/Postgres | Zero setup, runs from `git clone`; Postgres is the multi-user next step |
+| UI | Streamlit sidebar pages | React | Budget; the queue and board are the product |
+
+**Assumed stakeholder decisions** — listed in §2; each is reversible via config and should be confirmed with the hiring manager before Phase 2.

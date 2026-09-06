@@ -3,6 +3,7 @@ Read docs/PRD.md (v2.0) before any task. Non-negotiables:
 - Eight tables exactly as PRD §5. All DB access through db/. Portable SQL, no SQLite-only features.
 - Status/stage changes ONLY by inserting an events row; vendors.status must be reconstructable from events; illegal transitions (PRD §6) raise.
 - Evidence rule: value without source_url or attestation -> verified=false -> never written to vendors.attributes or tagged with a verified badge. LLM extraction must return a snippet per value or the value is discarded.
+- Three configs are P0: ego_data_stereo, code_data_github_orgs, code_data_brokers. China exclusion = registration_country and ownership_country; collection geography is a tag.
 - Screening is three-valued (pass/fail/unknown). unknown never auto-rejects; it sets next_action=outreach_to_verify.
 - Inputs = SourceAdapter (discover, normalize -> vendor, evidence, tags) + pure screen(vendor, evidence, ruleset). Screening never lives in an adapter. Manual upload goes through the same normalize -> evidence -> screen path.
 - Every run writes a runs row with ruleset_version and persists raw payloads to data/runs/<run_id>/.
