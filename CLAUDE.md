@@ -13,3 +13,5 @@ Read docs/PRD.md (v2.0) before any task. Non-negotiables:
 - Outreach sends only to recipients in DEMO_ALLOWED_RECIPIENTS (.env.local). Secrets from .env.local only; never in client components.
 - UI: shadcn components only (Sidebar, DataTable, Sheet, Dialog, Badge, Tabs, Card). Theme per docs/THEME.md in globals.css. No third-party logos or wordmarks.
 - Work only on the slot I name. Stop and report when its acceptance criteria are met.
+- Model routing: claude-haiku-4-5 for extraction and classification; claude-sonnet-5 for seed-query generation, email drafting, and status inference.
+- Cost control: persist raw payloads to data/runs/<run_id>/ and support a --replay flag (or replay=true in the run API) that re-extracts from disk without re-searching. Default limit to 5 candidates in development.
