@@ -8,7 +8,7 @@ Why:
 How:
 1. A vendor sourcing tool with customizable requirements for different discovery channel.
 * Custom web search, Github search, Manual CSV upload, etc.
-2. A vendor database filters to locate data faster, expandable vendor information for detail view, and review queue for action items.
+3. A vendor database filters to locate data faster, expandable vendor information for detail view, and review queue for action items.
 * Vendor Source, Vendor Data, Review Queue
 3. A vendor outreach tool with overview on vendor lifecycle, built-in email connector with AI generated draft for one-click send, and LLM powered response and proposal from email conversation, with human authorization as necessary.
 * Board, Draft & Send, Proposals
@@ -17,9 +17,12 @@ What: An end-to-end system that sources potential vendors, manages existing vend
 
 Product spec: [docs/PRD.md](docs/PRD.md).
 
-## Mind map: where the human clicks
+## User Flow
 
-Orange nodes are clicks. Dark orange nodes are the human gates, the clicks that change a vendor's status. Gray nodes happen on their own.
+* Orange nodes are clicks.
+* Brown nodes happen on their own.
+* Dark orange nodes are the human gates, the clicks that change a vendor's status.
+
 
 ```mermaid
 flowchart LR
@@ -33,7 +36,14 @@ flowchart LR
   subgraph DASH["Dashboard"]
     direction LR
     D1["Hover a metric name:<br/>definition + business impact"]:::auto --> D2["👆 Click a tile, bar or slice<br/>→ the filtered view behind it"]:::human
-  end
+    style DASH color:#000000
+    style SRC  color:#000000
+    style DATA color:#000000
+    style REV  color:#000000
+    style SEND color:#000000
+    style PROP color:#000000
+    style VP   color:#000000
+ end
 
   subgraph SRC["Database › Vendor Source"]
     direction LR
@@ -83,7 +93,7 @@ flowchart LR
   ROOT --> VP
 ```
 
-The vendor's journey through those surfaces, with the three gates:
+Vendor Relationship Life Cycle
 
 ```mermaid
 flowchart LR
@@ -94,7 +104,7 @@ flowchart LR
 
 Everything between the gates is logged as an event with its actor and reason, and any automatic change can be reverted with one click.
 
-## Technical & Data Flow
+## System Architecture
 
 ```mermaid
 flowchart LR
