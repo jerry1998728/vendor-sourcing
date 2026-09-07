@@ -170,3 +170,27 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
 6. **Outreach → Proposals** — reply from the test inbox (or simulate one): Replied is automatic, a plain "let's talk" auto-applies In Discussion, a quote waits for Accept; Revert undoes any automatic change. **Run follow-ups** drafts nudges for silent vendors and parks them as Dormant after 10 days.
 7. **Vendor page** — Attributes with badges, Evidence, Timeline as a vertical rail of status milestones and emails (every actor and reason, refresh diffs, Revert on inference), Thread; **Back** returns to wherever you came from.
 8. **Vendor Source → Scheduled refresh** — Refresh now on a config; the Timeline shows what changed. **Export CSV** on Vendor Data downloads the filtered view.
+
+## Improvements/Upgrades
+
+The five changes with the highest return, in order.
+
+**Registry lookup for company facts**
+- Action: add an adapter that reads registration and ownership country from public company registers, with the register page as the evidence URL, through the same normalize → evidence → screen path as every other source.
+- Impact: the unknown rate drops, fewer emails are sent only to verify facts, and more vendors reach the shortlist on the day they are found.
+
+**Structured quotes**
+- Action: when a reply carries pricing, extract price, unit, minimum order and licence terms into fields on the interaction and show them on the Board and the vendor page.
+- Impact: offers become comparable side by side, and the approval decision is made from a table instead of a pile of emails.
+
+**Evidence expiry**
+- Action: give each verified value a shelf life per field, mark expired evidence as stale, and let the refresh job prioritise expired must-fields on vendors already in the pipeline.
+- Impact: the team never acts on a fact that quietly went out of date, and refresh spend goes only where it matters.
+
+**Self-running jobs**
+- Action: move discovery, refresh, polling and follow-ups into a scheduler inside the app, with a job table and retries, replacing the external cron.
+- Impact: replies are picked up and follow-ups go out without anyone pressing a button, and a restart no longer loses work.
+
+**Learn from outcomes**
+- Action: report which seed queries, source channels and screening rules produced vendors that reached Approved, from the runs and events tables already recorded.
+- Impact: each sourcing round is cheaper and better targeted than the last, because spend goes to the queries and channels that convert.
