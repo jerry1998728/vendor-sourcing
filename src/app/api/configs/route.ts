@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { REQUIREMENT_MAX_CHARS, REQUIREMENT_MIN_CHARS } from "@/lib/shared/inputs";
+
 import { VENDOR_TYPES } from "@/lib/pipeline/types";
 import { listConfigs, writeConfig } from "@/lib/rulesets/loader";
 
@@ -16,7 +18,7 @@ const BodySchema = z.discriminatedUnion("kind", [
     vendor_type: z.enum(VENDOR_TYPES),
     ruleset: rulesetRef,
     description: z.string().trim().max(500).optional(),
-    requirement: z.string().trim().min(10).max(2000),
+    requirement: z.string().trim().min(REQUIREMENT_MIN_CHARS).max(REQUIREMENT_MAX_CHARS),
     seed_queries: z.array(z.string().trim().min(3).max(200)).min(1).max(20),
     limit: z.number().int().min(1).max(200).optional(),
     exclude_domains: z.array(z.string().trim().min(3)).max(50).optional(),
@@ -27,7 +29,7 @@ const BodySchema = z.discriminatedUnion("kind", [
     vendor_type: z.enum(VENDOR_TYPES),
     ruleset: rulesetRef,
     description: z.string().trim().max(500).optional(),
-    requirement: z.string().trim().max(2000).optional(),
+    requirement: z.string().trim().max(REQUIREMENT_MAX_CHARS).optional(),
     languages: z.array(z.string().trim().min(1).max(40)).min(1).max(10),
     min_merged_prs: z.number().int().min(0).optional(),
     activity_window_days: z.number().int().min(1).max(3650).optional(),

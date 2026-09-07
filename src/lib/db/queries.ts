@@ -1,6 +1,10 @@
 /** Read/write helpers shared by pages, API routes and scripts. */
 import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
+import { isFollowUpDraft } from "@/lib/shared/drafts";
+import type { VendorFilters } from "@/lib/shared/vendor-filters";
+
+import { listVendorsFiltered } from "./filters";
 import { getDb, nowIso, type DbOrTx } from "./index";
 import {
   events,
@@ -265,4 +269,15 @@ export function countActiveThreads(db: DbOrTx = getDb()): number {
     .from(interactions)
     .where(and(eq(interactions.direction, "outbound"), isNotNull(interactions.gmail_thread_id), inArray(interactions.vendor_id, active)))
     .get()?.n ?? 0;
+}
+
+export type Sendable = { qualified: Vendor[]; followUps: Vendor[]; drafts: Map<string, InteractionRow> };
+
+/** Draft & Send: Qualified vendors plus Contacted / Dormant vendors holding a follow-up draft, with each vendor's latest draft. */
+export function listSendable(f: Pick<VendorFilters, "owner" | "vendor_type"> = {}, db: DbOrTx = getDb()): Sendable {
+  const rows = listVendorsFiltered({ owner: f.owner, vendor_type: f.vendor_type, status: ["Qualified", "Contacted", "Dormant"] }, db);
+  const drafts = latestDraftsFor(rows.map((v) => v.vendor_id), db);
+  const qualified = rows.filter((v) => v.status === "Qualified");
+  const followUps = rows.filter((v) => v.status !== "Qualified" && isFollowUpDraft(drafts.get(v.vendor_id)));
+  return { qualified, followUps, drafts };
 }

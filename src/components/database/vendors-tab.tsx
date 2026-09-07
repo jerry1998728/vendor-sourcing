@@ -60,7 +60,6 @@ export function VendorsTab({
 
   const push = (next: Filters) => {
     const params = applyFiltersToParams(next, new URLSearchParams());
-    params.set("tab", "vendors");
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
   const current = canonical(filters);

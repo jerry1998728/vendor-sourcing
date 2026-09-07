@@ -91,7 +91,7 @@
   --warning: #e0a83b;
   --destructive: #d9534f;
 
-  /* charts: grays only */
+  /* charts: grays; the accent and the three status colours are applied per series in src/components/dashboard/charts.tsx (docs/THEME.md, Charts) */
   --chart-1: #e7e7e8;
   --chart-2: #a1a1a1;
   --chart-3: #6b6b6b;

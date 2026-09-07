@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
+import { REQUIREMENT_MAX_CHARS, REQUIREMENT_MIN_CHARS } from "@/lib/shared/inputs";
+
 import { getAnthropic, modelFor, supportsEffort } from "@/lib/llm/client";
 import { SeedQueriesOutput, VENDOR_TYPES } from "@/lib/pipeline/types";
 
@@ -9,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const BodySchema = z.object({
   vendor_type: z.enum(VENDOR_TYPES),
-  requirement: z.string().trim().min(10).max(2000),
+  requirement: z.string().trim().min(REQUIREMENT_MIN_CHARS).max(REQUIREMENT_MAX_CHARS),
   count: z.number().int().min(3).max(12).default(8),
 });
 

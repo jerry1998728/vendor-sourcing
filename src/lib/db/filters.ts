@@ -1,5 +1,5 @@
 /**
- * SQL side of the vendor filters (see src/lib/vendor-filters.ts for the
+ * SQL side of the vendor filters (see src/lib/shared/vendor-filters.ts for the
  * URL <-> filters mapping, which client components import).
  */
 import { and, asc, eq, inArray, isNull, like, lt, notInArray, or, sql, type SQL } from "drizzle-orm";

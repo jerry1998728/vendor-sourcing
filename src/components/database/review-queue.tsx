@@ -108,7 +108,6 @@ export function ReviewQueue({
   const index = current ? queue.findIndex((q) => q.vendor_id === current.vendor.vendor_id) : -1;
   const hrefFor = (vendorId: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", "review");
     if (vendorId) params.set("vendor", vendorId);
     else params.delete("vendor");
     return `${pathname}?${params.toString()}`;

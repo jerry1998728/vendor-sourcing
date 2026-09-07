@@ -1,6 +1,6 @@
 # Vendor Sourcing & Tracking
 
-One vendor database, three inputs (custom web search, GitHub organisations, manual CSV) and three surfaces (Dashboard, Database, Outreach). Every field value carries evidence, screening is three-valued (pass / fail / unknown) and status changes only happen through an append-only event log. Product spec: [docs/PRD.md](docs/PRD.md).
+One vendor database, three inputs (custom web search, GitHub organisations, manual CSV) and three surfaces: Dashboard, Database (Vendor Source, Vendor Data, Review Queue) and Outreach (Board, Draft & Send, Proposals). Every field value carries evidence, screening is three-valued (pass / fail / unknown) and status changes only happen through an append-only event log. Product spec: [docs/PRD.md](docs/PRD.md).
 
 ## How it works
 
@@ -15,9 +15,9 @@ flowchart LR
   WS & GH & CSV & RF --> N[normalize: vendor + evidence + tags]
   N --> S[screen: pass / fail / unknown<br/>versioned ruleset]
   S --> DB[(SQLite via Drizzle<br/>8 tables, evidence and events append-only)]
-  DB --> D[Database: Vendors, Review Queue, Inputs]
+  DB --> D[Database: Vendor Source, Vendor Data, Review Queue]
   DB --> O[Outreach: Board, Draft & Send, Proposals]
-  DB --> H[Dashboard: 5 linked metrics]
+  DB --> H[Dashboard: KPI tiles + linked charts]
   O -- human send --> GM[Gmail]
   GM -- poll --> I[infer with sonnet<br/>apply at 0.85 or propose]
   I --> DB
@@ -38,21 +38,22 @@ flowchart LR
 | Path | Role |
 |---|---|
 | `src/lib/db` | schema (8 tables), client, `state.ts` (transitions, replay, informational events), filters, metrics, queries, CSV export |
-| `src/lib/shared` | client-safe helpers: filter params, must-field definition, env, email, HTTP, default rulesets |
+| `src/lib/shared` | client-safe helpers: filter params, section redirects, must-field definition, env, email, HTTP, default rulesets |
 | `src/lib/pipeline` | adapter contract and zod schemas, `screen.ts`, `run.ts` (discover → normalize), `write.ts` (plan → apply → finalize), `refresh.ts`, `manual.ts`, replay storage, cron |
 | `src/lib/adapters` | `webSearchLlm.ts`, `githubOrg.ts` |
-| `src/lib/rulesets` | YAML loaders for configs and rulesets, config writer |
+| `src/lib/rulesets` | YAML loaders for configs and rulesets, config and ruleset writers |
 | `src/lib/llm` | Anthropic client with per-task model routing, page fetcher |
 | `src/lib/outreach` | Gmail OAuth, `send.ts` (the human send gate), drafts, recipient allowlist |
 | `src/lib/track` | inbound polling, status inference, proposal decisions, follow-ups |
-| `src/app/(app)` | Dashboard, Database, Outreach, `/vendors/[id]` pages |
-| `src/app/api` | route handlers: runs, refresh, schedules, inputs, vendors, proposals, gmail, track, export |
+| `src/app/(app)` | Dashboard; Database (`sources`, `vendors`, `review`); Outreach (`board`, `draft`, `proposals`); `/vendors/[id]` |
+| `src/components` | sidebar and nav items, shadcn primitives, `dashboard/charts.tsx`, database / outreach / vendor components |
+| `src/app/api` | route handlers: runs, refresh, schedules, inputs, rulesets, configs, vendors, proposals, gmail, track, export |
 | `configs/`, `rulesets/` | the three P0 categories |
 | `tests/` | unit and integration tests, reply fixtures, CSV fixture |
 
 ## Deployment contract
 
-One long-lived Node process with a writable disk: the SQLite file, `data/runs/`, `token.json` from the OAuth callback, and YAML configs written from the Inputs tab. Discovery, refresh and polling run inside the process (`after()`), and a restart marks unfinished runs failed at boot. This is not a serverless or multi-instance shape; put `APP_PASSWORD` in front of it before it leaves localhost.
+One long-lived Node process with a writable disk: the SQLite file, `data/runs/`, `token.json` from the OAuth callback, and YAML configs and rulesets written from the Vendor Source page. Discovery, refresh and polling run inside the process (`after()`), and a restart marks unfinished runs failed at boot. This is not a serverless or multi-instance shape; put `APP_PASSWORD` in front of it before it leaves localhost.
 
 ## Setup
 
@@ -90,7 +91,7 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
 - Every run writes a `runs` row with its `ruleset_version` and persists raw payloads.
 - Outside a production build the discovery limit defaults to 5 candidates; pass `limit` in `POST /api/runs` to override up to the config's own limit.
 - `POST /api/runs { config, replay: true }` (or the **Replay latest run** checkbox) re-extracts the latest finished run's persisted candidates without searching again.
-- A new vendor category is one `configs/<name>.yaml` plus one `rulesets/<name>.vN.yaml`; the Inputs tab writes web-search and GitHub configs for you.
+- A new vendor category is one `configs/<name>.yaml` plus one `rulesets/<name>.vN.yaml`; the Vendor Source page writes web-search and GitHub configs for you, and the **+** next to any ruleset selector clones a ruleset into a validated new file (`POST /api/rulesets`).
 
 ## Tracking replies
 
@@ -101,7 +102,7 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
 ### Scheduled refresh, follow-ups and export (P1)
 
 - `POST /api/refresh { config, vendor_ids?, limit? }` re-fetches the evidence pages of each vendor discovered by that config's adapter, re-extracts, writes new evidence through the normal path and records `tag_changed` / `screen_changed` events (actor=system) on the vendor Timeline. A changed screen result on a vendor past Screened sets `next_action=re_review`, which the Review Queue lists on top. Development refreshes are capped at 5 vendors.
-- **Inputs → Scheduled refresh** stores one cron per config in the `schedules` table (5-field cron, UTC, presets in the picker) with a **Refresh now** button. Nothing runs by itself: an external cron calls `POST /api/schedules/run-due`, which runs every enabled schedule whose cron fired since its last run and records `last_run_id`. Example crontab entry:
+- **Vendor Source → Scheduled refresh** stores one cron per config in the `schedules` table (5-field cron, UTC, presets in the picker) with a **Refresh now** button. Nothing runs by itself: an external cron calls `POST /api/schedules/run-due`, which runs every enabled schedule whose cron fired since its last run and records `last_run_id`. Example crontab entry:
 
   ```
   */15 * * * * curl -s -X POST http://localhost:3000/api/schedules/run-due
@@ -110,14 +111,15 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
   ```
 
 - `POST /api/track/followups` drafts a follow-up (sonnet) for Contacted vendors 7 days after the last outbound with no reply, moves them to Dormant at 10 days (system event) and drafts a last touch at 14 days. Follow-up drafts appear in **Outreach → Draft & Send**; sending them goes into the existing Gmail thread without a status change. Outside production the body may carry `as_of` to simulate elapsed time.
-- **Database → Vendors → Export CSV** downloads the current filtered view (`GET /api/export?<filters>`) with one column per tag dimension.
+- **Database → Vendor Data → Export CSV** downloads the current filtered view (`GET /api/export?<filters>`) with one column per tag dimension.
 
 ## Scripts
 
 | Command | What it does |
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js |
-| `npm test` | unit and integration tests (state machine, screening, write path, filters, CSV, outreach, tracking, refresh, cron, follow-ups) |
+| `npm test` | unit and integration tests (state machine, screening, write path, filters, CSV, outreach, tracking, refresh, cron, follow-ups, rulesets, navigation, timeline) |
+| `npm run typecheck` / `npm run lint` | `next typegen && tsc --noEmit`; eslint. CI runs both, then the tests and a production build |
 | `npm run test:replies` | reply inference accuracy on `tests/replies/*.json` |
 | `npm run seed:sample` | idempotent fictional sample data (`.example` domains) |
 | `npm run verify:run [run_id]` | acceptance checks for a run: counts, evidence coverage, no unverified attributes, no duplicates, event replay |
@@ -125,11 +127,11 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
 
 ## Demo script (5 minutes)
 
-1. **Dashboard** — five linked metrics: funnel, coverage by type, unknown rate, active pipeline with reply rate, work backlog. Click any number to land in the filtered view.
-2. **Database → Vendors** — filters live in the URL; open a row for evidence with verbatim snippets and source links, tags with source badges.
-3. **Database → Inputs** — run `ego_data_stereo` (5 candidates in dev), or replay the last run; upload the 5-row CSV from `tests/fixtures/manual_ego_sample.csv` and watch badges (manual, attested, unknown).
+1. **Dashboard** — KPI tiles and charts: sourcing funnel, screening donut, coverage by type, reply rate, backlog, discovery runs, source, country. Click a tile, bar or slice to land in the filtered view; hover a metric name for its definition and why it matters.
+2. **Database → Vendor Data** — filters live in the URL; open a row for evidence with verbatim snippets and source links, tags with source badges.
+3. **Database → Vendor Source** — describe a requirement, **Generate seed queries**, **Save config & run** (5 candidates in dev; buttons say why they are disabled until the form is ready), or run `ego_data_stereo` from Vendor Data, or replay the last run; upload the 5-row CSV from `tests/fixtures/manual_ego_sample.csv` and watch badges (manual, attested, unknown).
 4. **Database → Review Queue** — Qualify one pass, Reject one fail with a reason, Need info one unknown.
 5. **Outreach → Draft & Send** — pick the Need-info vendor; the draft cites verified facts and asks about the unknown field; edit, send to the allowlisted inbox; the vendor becomes Contacted with a thread id.
 6. **Outreach → Proposals** — reply from the test inbox (or simulate one): Replied is automatic, a plain "let's talk" auto-applies In Discussion, a quote waits for Accept; Revert undoes any automatic change. **Run follow-ups** drafts nudges for silent vendors and parks them as Dormant after 10 days.
-7. **Vendor page** — Attributes with badges, Evidence, Timeline with every actor and reason (including refresh diffs), Thread.
-8. **Inputs → Scheduled refresh** — Refresh now on a config; the Timeline shows what changed. **Export CSV** on the Vendors tab downloads the filtered view.
+7. **Vendor page** — Attributes with badges, Evidence, Timeline as a vertical rail of status milestones and emails (every actor and reason, refresh diffs, Revert on inference), Thread; **Back** returns to wherever you came from.
+8. **Vendor Source → Scheduled refresh** — Refresh now on a config; the Timeline shows what changed. **Export CSV** on Vendor Data downloads the filtered view.

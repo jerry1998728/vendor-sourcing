@@ -3,6 +3,7 @@ import { and, count, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from "d
 
 import { getDb, type DbOrTx } from "./index";
 import { STALE_DAYS } from "./filters";
+import { listSendable, runStatus } from "./queries";
 import { events, proposals, runs, vendors, type Run, type VendorStatus } from "./schema";
 
 export type Funnel = { discovered: number; pass: number; unknown: number; fail: number; byStatus: Record<VendorStatus, number> };
@@ -87,4 +88,57 @@ export function secondary(db: DbOrTx = getDb()): Secondary {
     .map((r) => ({ country: r.country ?? "?", n: r.n }));
 
   return { by_source: bySource, stale, last_run: lastRun, median_hours_to_first_reply: median, replies_measured: hours.length, by_country: byCountry };
+}
+
+/** Pipeline order for the funnel chart; Rejected and Dormant are exits, not steps. */
+export const FUNNEL_ORDER: VendorStatus[] = ["Identified", "Screened", "Qualified", "Contacted", "Replied", "In Discussion", "Approved"];
+
+export type FunnelStep = { status: VendorStatus; reached: number; current: number };
+
+/** Vendors that ever reached each status (distinct vendor per to_status in the event log) next to the vendors there now. */
+export function funnelReached(db: DbOrTx = getDb()): FunnelStep[] {
+  const total = db.select({ n: count() }).from(vendors).get()?.n ?? 0;
+  const reached = new Map(
+    db
+      .select({ status: events.to_status, n: sql<number>`count(distinct ${events.vendor_id})` })
+      .from(events)
+      .groupBy(events.to_status)
+      .all()
+      .map((r) => [r.status, r.n]),
+  );
+  const current = funnel(db).byStatus;
+  return FUNNEL_ORDER.map((status) => ({ status, reached: status === "Identified" ? total : (reached.get(status) ?? 0), current: current[status] ?? 0 }));
+}
+
+export type RunPoint = { run_id: string; config: string; finished_at: string | null; discovered: number; pass: number; unknown: number; fail: number; coverage: number | null };
+
+/** The last n completed discovery runs (web search, GitHub, manual; not refreshes), oldest first. */
+export function runHistory(n = 10, db: DbOrTx = getDb()): RunPoint[] {
+  return db
+    .select()
+    .from(runs)
+    .where(and(isNotNull(runs.finished_at), inArray(runs.input_type, ["web_search", "github", "manual"])))
+    .orderBy(desc(runs.started_at))
+    .limit(n * 2)
+    .all()
+    .filter((r) => runStatus(r) === "done")
+    .slice(0, n)
+    .reverse()
+    .map((r) => ({
+      run_id: r.run_id,
+      config: String(r.query.config ?? r.adapter),
+      finished_at: r.finished_at,
+      discovered: r.counts.discovered ?? 0,
+      pass: r.counts.pass ?? 0,
+      unknown: r.counts.unknown ?? 0,
+      fail: r.counts.fail ?? 0,
+      coverage: r.counts.must_field_coverage ?? null,
+    }));
+}
+
+/** Badge counts for the sidebar sub-pages, keyed by href: review queue, sendable drafts, pending proposals. */
+export function sidebarCounts(db: DbOrTx = getDb()): Record<string, number> {
+  const back = backlog(db);
+  const sendable = listSendable({}, db);
+  return { "/database/review": back.review_queue, "/outreach/draft": sendable.qualified.length + sendable.followUps.length, "/outreach/proposals": back.proposals };
 }

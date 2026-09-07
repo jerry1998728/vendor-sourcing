@@ -66,13 +66,13 @@ export function parseRulesetRef(ref: string): { name: string; version: string } 
   return { name: m[1], version: m[2] };
 }
 
-export function rulesetPath(ref: string): string {
+export function rulesetPath(ref: string, dir = RULESET_DIR): string {
   const { name, version } = parseRulesetRef(ref);
-  return path.join(RULESET_DIR, `${name}.${version}.yaml`);
+  return path.join(dir, `${name}.${version}.yaml`);
 }
 
-export function loadRuleset(ref: string): Ruleset {
-  const file = rulesetPath(ref);
+export function loadRuleset(ref: string, dir = RULESET_DIR): Ruleset {
+  const file = rulesetPath(ref, dir);
   if (!fs.existsSync(file)) throw new Error(`ruleset file not found: ${file}`);
   const parsed = RulesetFileSchema.safeParse(loadYaml(fs.readFileSync(file, "utf8")));
   if (!parsed.success) {
@@ -111,22 +111,78 @@ export type RulesetSummary = {
 };
 
 /** Every rulesets/<name>.<version>.yaml; invalid files are listed with their error. */
-export function listRulesets(): RulesetSummary[] {
-  if (!fs.existsSync(RULESET_DIR)) return [];
+export function listRulesets(dir = RULESET_DIR): RulesetSummary[] {
+  if (!fs.existsSync(dir)) return [];
   return fs
-    .readdirSync(RULESET_DIR)
+    .readdirSync(dir)
     .filter((f) => /\.v\d+\.ya?ml$/.test(f))
     .sort()
     .map((f) => {
       const m = /^([a-z0-9_]+)\.(v\d+)\.ya?ml$/.exec(f);
       const ref = m ? `${m[1]}@${m[2]}` : f;
       try {
-        const r = loadRuleset(ref);
+        const r = loadRuleset(ref, dir);
         return { ref, name: r.name, version: r.version, vendor_type: r.vendor_type, description: r.description, valid: true };
       } catch (err) {
         return { ref, name: m?.[1] ?? f, version: m?.[2] ?? "", valid: false, error: err instanceof Error ? err.message : String(err) };
       }
     });
+}
+
+/** Raw file text of a ruleset, the starting point of the clone-and-edit dialog. */
+export function readRulesetYaml(ref: string, dir = RULESET_DIR): string {
+  const file = rulesetPath(ref, dir);
+  if (!fs.existsSync(file)) throw new Error(`ruleset file not found: ${file}`);
+  return fs.readFileSync(file, "utf8");
+}
+
+export type NewRulesetInput = { name: string; version: string; yaml: string };
+
+export class RulesetExistsError extends Error {}
+
+const VERSION = /^v\d+$/;
+
+/** Top-level name/version come from the form; the text keeps its comments and order. */
+function withHeaderKeys(yaml: string, name: string, version: string): string {
+  const lines = yaml.replace(/\r\n/g, "\n").split("\n");
+  const set = (key: string, value: string) => {
+    const i = lines.findIndex((l) => l.startsWith(`${key}:`));
+    if (i >= 0) lines[i] = `${key}: ${value}`;
+    else lines.unshift(`${key}: ${value}`);
+  };
+  set("version", version);
+  set("name", name);
+  const header = `# rulesets/${name}.${version}.yaml — created from the Vendor Source page on ${new Date().toISOString()}`;
+  if (lines[0]?.startsWith("# rulesets/")) lines[0] = header;
+  else lines.unshift(header);
+  return lines.join("\n").replace(/\n*$/, "\n");
+}
+
+/** Validate a YAML ruleset and write rulesets/<name>.<version>.yaml. Never overwrites. */
+export function writeRuleset(input: NewRulesetInput, dir = RULESET_DIR): RulesetSummary {
+  const name = input.name.trim().toLowerCase();
+  const version = input.version.trim().toLowerCase();
+  if (!SAFE_NAME.test(name)) throw new Error(`invalid ruleset name "${input.name}" (lowercase letters, digits and underscores)`);
+  if (!VERSION.test(version)) throw new Error(`invalid version "${input.version}" (expected v1, v2, ...)`);
+  const text = withHeaderKeys(input.yaml, name, version);
+  let doc: unknown;
+  try {
+    doc = loadYaml(text);
+  } catch (err) {
+    throw new Error(`YAML does not parse: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (!doc || typeof doc !== "object" || Array.isArray(doc)) throw new Error("invalid ruleset: the YAML must be a mapping with vendor_type, must, should and fields");
+  const parsed = RulesetFileSchema.safeParse(doc);
+  if (!parsed.success) {
+    throw new Error(`invalid ruleset: ${parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`);
+  }
+  const ref = `${name}@${version}`;
+  const file = rulesetPath(ref, dir);
+  if (fs.existsSync(file)) throw new RulesetExistsError(`ruleset ${ref} already exists`);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(file, text, "utf8");
+  const r = loadRuleset(ref, dir);
+  return { ref, name: r.name, version: r.version, vendor_type: r.vendor_type, description: r.description, valid: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -247,7 +303,7 @@ export function buildDiscoveryQuery(config: AppConfig): DiscoveryQuery {
 }
 
 // ---------------------------------------------------------------------------
-// Writing configs (custom searches from the Inputs tab)
+// Writing configs (custom searches from the Vendor Source page)
 // ---------------------------------------------------------------------------
 
 
@@ -302,7 +358,7 @@ export function writeConfig(input: NewConfigInput): AppConfig {
           vendor_type: input.vendor_type,
           adapter: "web_search_llm",
           ruleset: input.ruleset,
-          description: input.description ?? `Custom web search created from the Inputs tab`,
+          description: input.description ?? `Custom web search created from the Vendor Source page`,
           requirement: input.requirement,
           limit: input.limit ?? 30,
           max_results_per_query: 10,
@@ -314,7 +370,7 @@ export function writeConfig(input: NewConfigInput): AppConfig {
           vendor_type: input.vendor_type,
           adapter: "github_org",
           ruleset: input.ruleset,
-          description: input.description ?? `Custom GitHub search created from the Inputs tab`,
+          description: input.description ?? `Custom GitHub search created from the Vendor Source page`,
           requirement: input.requirement ?? "",
           limit: input.limit ?? 50,
           github: {
@@ -328,6 +384,6 @@ export function writeConfig(input: NewConfigInput): AppConfig {
   const validated = ConfigFileSchema.safeParse(body);
   if (!validated.success) throw new Error(`invalid config: ${validated.error.message}`);
   fs.mkdirSync(CONFIG_DIR, { recursive: true });
-  fs.writeFileSync(file, `# generated from the Inputs tab on ${new Date().toISOString()}\n${dumpYaml(body, { lineWidth: 100 })}`, "utf8");
+  fs.writeFileSync(file, `# generated from the Vendor Source page on ${new Date().toISOString()}\n${dumpYaml(body, { lineWidth: 100 })}`, "utf8");
   return loadConfig(name);
 }
