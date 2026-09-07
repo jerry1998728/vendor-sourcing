@@ -17,6 +17,105 @@ What: An end-to-end system that sources potential vendors, manages existing vend
 
 Product spec: [docs/PRD.md](docs/PRD.md).
 
+## Mind map: where the human clicks
+
+Orange nodes are clicks. Dark orange nodes are the human gates, the clicks that change a vendor's status. Gray nodes happen on their own.
+
+```mermaid
+flowchart LR
+  classDef human fill:#ED6941,stroke:#ED6941,color:#141414
+  classDef gate fill:#83402B,stroke:#ED6941,color:#E7E7E8
+  classDef auto fill:#202021,stroke:#6B6B6B,color:#E7E7E8
+  classDef root fill:#1A1A1A,stroke:#ED6941,color:#E7E7E8
+
+  ROOT(("Vendor Sourcing<br/>#38; Tracking")):::root
+
+  subgraph DASH["Dashboard"]
+    direction TB
+    D1["Hover a metric name:<br/>definition + business impact"]:::auto
+    D2["👆 Click a tile, bar or slice<br/>→ the filtered view behind it"]:::human
+  end
+
+  subgraph SRC["Database › Vendor Source"]
+    direction TB
+    S1["👆 Describe a requirement<br/>→ Generate seed queries → edit them"]:::human
+    S2["👆 GitHub: pick languages<br/>and thresholds"]:::human
+    S3["👆 Save config #38; run"]:::human
+    S4["👆 Manual CSV: download template<br/>→ fill → Upload"]:::human
+    S5["👆 + New ruleset:<br/>clone the YAML → Save"]:::human
+    S6["👆 Scheduled refresh:<br/>save a cron · Refresh now"]:::human
+    S7["⚙ discover → normalize → evidence → screen<br/>pass / fail / unknown → Screened"]:::auto
+    S1 --> S3
+    S2 --> S3
+    S3 --> S7
+    S4 --> S7
+    S6 --> S7
+    S5 -.-> S3
+  end
+
+  subgraph DATA["Database › Vendor Data"]
+    direction TB
+    V1["👆 Filters, quick views, search<br/>(all of it in the URL)"]:::human
+    V2["👆 Row → vendor sheet → vendor page"]:::human
+    V3["👆 Run config · Replay latest run"]:::human
+    V4["👆 Export CSV"]:::human
+  end
+
+  subgraph REV["Database › Review Queue · human gate 1"]
+    direction TB
+    R1["⚙ Screened vendors wait here,<br/>unknown must-fields pinned on top"]:::auto
+    R2["👆 Qualify"]:::gate
+    R3["👆 Reject (reason required)"]:::gate
+    R4["👆 Need info → Qualified<br/>+ outreach_to_verify"]:::gate
+    R1 --> R2
+    R1 --> R3
+    R1 --> R4
+  end
+
+  subgraph OUT["Outreach"]
+    direction TB
+    O1["👆 Draft #38; Send: Generate draft<br/>(cites evidence, asks the unknowns)"]:::human
+    O2["👆 Edit · set recipient · Send · human gate 2<br/>(allowlisted recipients only)"]:::gate
+    O3["⚙ Gmail send → Contacted,<br/>thread id saved"]:::auto
+    O4["👆 Board: status columns,<br/>owner, next action, due date"]:::human
+    O5["👆 Proposals: Poll inbox"]:::human
+    O6["⚙ first reply → Replied<br/>infer with sonnet: apply at ≥ 0.85 or propose"]:::auto
+    O7["👆 Accept / Reject proposal · human gate 3<br/>(quotes and sampling always wait here)"]:::gate
+    O8["👆 Revert any automatic change"]:::gate
+    O9["👆 Run follow-ups<br/>→ ⚙ 7d / 14d drafts, Dormant at 10d"]:::human
+    O1 --> O2
+    O2 --> O3
+    O3 --> O5
+    O5 --> O6
+    O6 --> O7
+    O6 --> O8
+    O3 --> O9
+  end
+
+  subgraph VP["Vendor page"]
+    direction TB
+    P1["Attributes · Evidence · Timeline · Thread"]:::auto
+    P2["👆 Revert inference · Poll inbox<br/>· Simulate reply (dev only)"]:::gate
+    P3["👆 Back"]:::human
+    P1 --> P2
+  end
+
+  A1["Approved: human only, through the transition API<br/>(no button in the UI yet)"]:::auto
+
+  ROOT --> DASH
+  ROOT --> SRC
+  ROOT --> DATA
+  ROOT --> REV
+  ROOT --> OUT
+  ROOT --> VP
+  S7 --> R1
+  R2 --> O1
+  R4 --> O1
+  O7 --> A1
+```
+
+The three human gates are the only places a vendor's status changes by hand: the Review Queue decides who is worth contacting, Send decides who actually gets an email, and Proposals decides on quotes and samples. Everything between them is logged and revertible.
+
 ## Technical & Data Flow
 
 ```mermaid
