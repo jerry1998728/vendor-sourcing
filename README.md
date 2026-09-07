@@ -118,7 +118,8 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
 | Command | What it does |
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js |
-| `npm test` | unit and integration tests (state machine, screening, write path, filters, CSV, outreach, tracking, refresh, cron, follow-ups, rulesets, navigation) |
+| `npm test` | unit and integration tests (state machine, screening, write path, filters, CSV, outreach, tracking, refresh, cron, follow-ups, rulesets, navigation, timeline) |
+| `npm run typecheck` / `npm run lint` | `next typegen && tsc --noEmit`; eslint. CI runs both, then the tests and a production build |
 | `npm run test:replies` | reply inference accuracy on `tests/replies/*.json` |
 | `npm run seed:sample` | idempotent fictional sample data (`.example` domains) |
 | `npm run verify:run [run_id]` | acceptance checks for a run: counts, evidence coverage, no unverified attributes, no duplicates, event replay |
@@ -126,7 +127,7 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
 
 ## Demo script (5 minutes)
 
-1. **Dashboard** — KPI tiles and charts: sourcing funnel, screening donut, coverage by type, reply rate, backlog, discovery runs, source, country. Click a tile, bar or slice to land in the filtered view.
+1. **Dashboard** — KPI tiles and charts: sourcing funnel, screening donut, coverage by type, reply rate, backlog, discovery runs, source, country. Click a tile, bar or slice to land in the filtered view; hover a metric name for its definition and why it matters.
 2. **Database → Vendor Data** — filters live in the URL; open a row for evidence with verbatim snippets and source links, tags with source badges.
 3. **Database → Vendor Source** — describe a requirement, **Generate seed queries**, **Save config & run** (5 candidates in dev; buttons say why they are disabled until the form is ready), or run `ego_data_stereo` from Vendor Data, or replay the last run; upload the 5-row CSV from `tests/fixtures/manual_ego_sample.csv` and watch badges (manual, attested, unknown).
 4. **Database → Review Queue** — Qualify one pass, Reject one fail with a reason, Need info one unknown.

@@ -303,7 +303,7 @@ export function buildDiscoveryQuery(config: AppConfig): DiscoveryQuery {
 }
 
 // ---------------------------------------------------------------------------
-// Writing configs (custom searches from the Inputs tab)
+// Writing configs (custom searches from the Vendor Source page)
 // ---------------------------------------------------------------------------
 
 
@@ -358,7 +358,7 @@ export function writeConfig(input: NewConfigInput): AppConfig {
           vendor_type: input.vendor_type,
           adapter: "web_search_llm",
           ruleset: input.ruleset,
-          description: input.description ?? `Custom web search created from the Inputs tab`,
+          description: input.description ?? `Custom web search created from the Vendor Source page`,
           requirement: input.requirement,
           limit: input.limit ?? 30,
           max_results_per_query: 10,
@@ -370,7 +370,7 @@ export function writeConfig(input: NewConfigInput): AppConfig {
           vendor_type: input.vendor_type,
           adapter: "github_org",
           ruleset: input.ruleset,
-          description: input.description ?? `Custom GitHub search created from the Inputs tab`,
+          description: input.description ?? `Custom GitHub search created from the Vendor Source page`,
           requirement: input.requirement ?? "",
           limit: input.limit ?? 50,
           github: {
@@ -384,6 +384,6 @@ export function writeConfig(input: NewConfigInput): AppConfig {
   const validated = ConfigFileSchema.safeParse(body);
   if (!validated.success) throw new Error(`invalid config: ${validated.error.message}`);
   fs.mkdirSync(CONFIG_DIR, { recursive: true });
-  fs.writeFileSync(file, `# generated from the Inputs tab on ${new Date().toISOString()}\n${dumpYaml(body, { lineWidth: 100 })}`, "utf8");
+  fs.writeFileSync(file, `# generated from the Vendor Source page on ${new Date().toISOString()}\n${dumpYaml(body, { lineWidth: 100 })}`, "utf8");
   return loadConfig(name);
 }

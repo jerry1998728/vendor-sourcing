@@ -6,22 +6,15 @@ export type NavItem = {
   title: string;
   /** Section root. A section with children redirects to its first child. */
   href: string;
-  description: string;
   icon: LucideIcon;
   children?: readonly NavChild[];
 };
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    description: "Funnel, screening, coverage, pipeline and backlog at a glance.",
-    icon: LayoutDashboard,
-  },
+  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   {
     title: "Database",
     href: "/database",
-    description: "Vendor sources, vendor data and the review queue.",
     icon: Database,
     children: [
       { title: "Vendor Source", href: "/database/sources" },
@@ -32,7 +25,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   {
     title: "Outreach",
     href: "/outreach",
-    description: "Board, draft & send, proposals.",
     icon: Send,
     children: [
       { title: "Board", href: "/outreach/board" },

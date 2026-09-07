@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import type { EventRow, InteractionRow, Vendor } from "@/lib/db/schema";
 import { formatDate, formatPct } from "@/lib/format";
 import { postJson } from "@/lib/shared/http";
+import { buildTimeline } from "@/lib/shared/timeline";
 import { cn } from "@/lib/utils";
 
 const ACTOR_CLASS: Record<string, string> = { human: "border-border text-foreground", system: TONE_CLASS.muted, adapter: TONE_CLASS.muted, llm_inference: TONE_CLASS.warning };
@@ -25,27 +26,6 @@ const ACTOR_DOT: Record<string, string> = { human: "bg-primary", system: "bg-mut
 
 const EMAIL_LABEL: Record<InteractionRow["direction"], string> = { draft: "Draft prepared", outbound: "Email sent", inbound: "Reply received" };
 const EMAIL_ICON: Record<InteractionRow["direction"], React.ComponentType<{ className?: string }>> = { draft: FileText, outbound: Send, inbound: Reply };
-
-type Item =
-  | { kind: "status" | "stage" | "note"; at: string; order: number; event: EventRow }
-  | { kind: "email"; at: string; order: number; interaction: InteractionRow };
-
-export function buildTimeline(events: EventRow[], interactions: InteractionRow[]): Item[] {
-  const items: Item[] = events.map((event, order) => ({
-    kind: event.from_status !== event.to_status ? "status" : event.from_stage !== event.to_stage ? "stage" : "note",
-    at: event.created_at,
-    order,
-    event,
-  }));
-  for (const [order, interaction] of interactions.entries()) items.push({ kind: "email", at: interaction.sent_at ?? "", order, interaction });
-  // Oldest first; an undated item (a draft without sent_at) goes last, as the newest activity.
-  return items.sort((a, b) => {
-    if (a.at === b.at) return a.order - b.order;
-    if (!a.at) return 1;
-    if (!b.at) return -1;
-    return a.at < b.at ? -1 : 1;
-  });
-}
 
 function Marker({ className, children }: { className: string; children?: React.ReactNode }) {
   return (

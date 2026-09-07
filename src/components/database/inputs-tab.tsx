@@ -29,6 +29,7 @@ import { formatPct, shortRunId } from "@/lib/format";
 import { RunProgress } from "./run-progress";
 import { DEFAULT_RULESETS as DEFAULT_RULESET } from "@/lib/shared/rulesets";
 import { postJson } from "@/lib/shared/http";
+import { REQUIREMENT_MIN_CHARS } from "@/lib/shared/inputs";
 
 import { LanguageSelect } from "./language-select";
 import { NewRulesetDialog } from "./new-ruleset-dialog";
@@ -36,7 +37,6 @@ import { RunsList } from "./runs-list";
 import { ScheduleCard } from "./schedule-card";
 import { useRun } from "./use-run";
 
-const REQUIREMENT_MIN = 10;
 
 /** Why a button is disabled, next to it, so an inactive control never reads as broken. */
 function Hint({ children }: { children: React.ReactNode }) {
@@ -135,9 +135,9 @@ function CustomSearchCard({ rulesets }: { rulesets: RulesetSummary[] }) {
   };
 
   const queryCount = queries.split("\n").filter((q) => q.trim()).length;
-  const requirementOk = requirement.trim().length >= REQUIREMENT_MIN;
-  const generateHint = requirementOk ? null : `Describe the requirement first (${REQUIREMENT_MIN}+ characters)`;
-  const saveHint = !requirementOk ? `Requirement needs ${REQUIREMENT_MIN}+ characters` : queryCount === 0 ? "Add at least one seed query" : null;
+  const requirementOk = requirement.trim().length >= REQUIREMENT_MIN_CHARS;
+  const generateHint = requirementOk ? null : `Describe the requirement first (${REQUIREMENT_MIN_CHARS}+ characters)`;
+  const saveHint = !requirementOk ? `Requirement needs ${REQUIREMENT_MIN_CHARS}+ characters` : queryCount === 0 ? "Add at least one seed query" : null;
 
   return (
     <Card>

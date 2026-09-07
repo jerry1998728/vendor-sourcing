@@ -4,6 +4,7 @@
  * when next_action is outreach_to_verify, asks about every unknown must-field.
  * The result is stored as an interactions row with direction=draft.
  */
+import { FOLLOW_UP_PREFIX } from "@/lib/shared/drafts";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 
 import { getDb, type Db } from "@/lib/db";
@@ -162,7 +163,7 @@ export async function draftEmail(ctx: DraftContext, opts: DraftOptions = {}): Pr
 /** Pure: the one-line provenance stored next to the draft. */
 export function draftSummary(out: DraftEmailOutput, check: DraftCheck, model: string, opts: DraftOptions = {}): string {
   return opts.mode === "follow_up"
-    ? `follow_up_${opts.followUpKind ?? "7d"}; model=${model}`
+    ? `${FOLLOW_UP_PREFIX}_${opts.followUpKind ?? "7d"}; model=${model}`
     : `model=${model}; cites evidence ${check.citedIds.map((i) => `#${i}`).join(", ") || "-"}; asks about ${out.asked_field_paths.join(", ") || "-"}`;
 }
 

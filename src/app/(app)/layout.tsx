@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getDb } from "@/lib/db";
-import { sidebarCounts } from "@/lib/db/queries";
+import { sidebarCounts } from "@/lib/db/metrics";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   // Sub-page badges (review queue, sendable drafts, pending proposals). Every

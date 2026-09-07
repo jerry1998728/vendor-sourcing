@@ -3,6 +3,7 @@
  * follow-up draft at 7 days and a last one at 14 days; at 10 days they
  * become Dormant (actor=system). Drafts are proposals for a human to send.
  */
+import { FOLLOW_UP_PREFIX } from "@/lib/shared/drafts";
 import { and, desc, eq, inArray } from "drizzle-orm";
 
 import { getDb, type Db } from "@/lib/db";
@@ -37,7 +38,7 @@ export async function runFollowUps(opts: FollowUpOptions = {}, db: Db = getDb())
     const days = Math.floor((now.getTime() - Date.parse(lastOutbound.sent_at)) / 86_400_000);
     const result: FollowUpResult = { vendor_id: v.vendor_id, days, dormant: false, drafted: null };
     const drafts = db.select().from(interactions).where(and(eq(interactions.vendor_id, v.vendor_id), eq(interactions.direction, "draft"))).all();
-    const has = (kind: FollowUpKind) => drafts.some((d) => d.llm_summary?.startsWith(`follow_up_${kind}`));
+    const has = (kind: FollowUpKind) => drafts.some((d) => d.llm_summary?.startsWith(`${FOLLOW_UP_PREFIX}_${kind}`));
 
     try {
       if (v.status === "Contacted" && days >= FOLLOW_UP_DAYS.dormant) {

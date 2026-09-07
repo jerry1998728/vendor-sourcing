@@ -1,6 +1,10 @@
 /** Read/write helpers shared by pages, API routes and scripts. */
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
+import { isFollowUpDraft } from "@/lib/shared/drafts";
+import type { VendorFilters } from "@/lib/shared/vendor-filters";
+
+import { listVendorsFiltered } from "./filters";
 import { getDb, nowIso, type DbOrTx } from "./index";
 import {
   events,
@@ -267,12 +271,13 @@ export function countActiveThreads(db: DbOrTx = getDb()): number {
     .get()?.n ?? 0;
 }
 
-/** Badge counts for the sidebar sub-pages, keyed by href: review queue, sendable drafts, pending proposals. */
-export function sidebarCounts(db: DbOrTx = getDb()): Record<string, number> {
-  const reviewQueue = db.select({ n: count() }).from(vendors).where(eq(vendors.status, "Screened")).get()?.n ?? 0;
-  const qualified = db.select({ n: count() }).from(vendors).where(eq(vendors.status, "Qualified")).get()?.n ?? 0;
-  const silent = db.select({ vendor_id: vendors.vendor_id }).from(vendors).where(inArray(vendors.status, ["Contacted", "Dormant"])).all().map((r) => r.vendor_id);
-  const followUps = [...latestDraftsFor(silent, db).values()].filter((d) => d.llm_summary?.startsWith("follow_up")).length;
-  const pending = db.select({ n: count() }).from(proposals).where(isNull(proposals.decided_at)).get()?.n ?? 0;
-  return { "/database/review": reviewQueue, "/outreach/draft": qualified + followUps, "/outreach/proposals": pending };
+export type Sendable = { qualified: Vendor[]; followUps: Vendor[]; drafts: Map<string, InteractionRow> };
+
+/** Draft & Send: Qualified vendors plus Contacted / Dormant vendors holding a follow-up draft, with each vendor's latest draft. */
+export function listSendable(f: Pick<VendorFilters, "owner" | "vendor_type"> = {}, db: DbOrTx = getDb()): Sendable {
+  const rows = listVendorsFiltered({ owner: f.owner, vendor_type: f.vendor_type, status: ["Qualified", "Contacted", "Dormant"] }, db);
+  const drafts = latestDraftsFor(rows.map((v) => v.vendor_id), db);
+  const qualified = rows.filter((v) => v.status === "Qualified");
+  const followUps = rows.filter((v) => v.status !== "Qualified" && isFollowUpDraft(drafts.get(v.vendor_id)));
+  return { qualified, followUps, drafts };
 }

@@ -3,7 +3,7 @@ import { and, count, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from "d
 
 import { getDb, type DbOrTx } from "./index";
 import { STALE_DAYS } from "./filters";
-import { runStatus } from "./queries";
+import { listSendable, runStatus } from "./queries";
 import { events, proposals, runs, vendors, type Run, type VendorStatus } from "./schema";
 
 export type Funnel = { discovered: number; pass: number; unknown: number; fail: number; byStatus: Record<VendorStatus, number> };
@@ -134,4 +134,11 @@ export function runHistory(n = 10, db: DbOrTx = getDb()): RunPoint[] {
       fail: r.counts.fail ?? 0,
       coverage: r.counts.must_field_coverage ?? null,
     }));
+}
+
+/** Badge counts for the sidebar sub-pages, keyed by href: review queue, sendable drafts, pending proposals. */
+export function sidebarCounts(db: DbOrTx = getDb()): Record<string, number> {
+  const back = backlog(db);
+  const sendable = listSendable({}, db);
+  return { "/database/review": back.review_queue, "/outreach/draft": sendable.qualified.length + sendable.followUps.length, "/outreach/proposals": back.proposals };
 }

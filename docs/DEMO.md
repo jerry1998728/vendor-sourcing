@@ -15,7 +15,7 @@ Every vendor value carries evidence; screening says pass, fail or unknown instea
 
 ## Steps
 
-**1. Dashboard, 30 seconds.** Point at the KPI tiles and the charts: sourcing funnel, screening donut, coverage by type, reply rate, backlog, discovery runs. Click the unknown-rate tile (or the unknown slice of the donut): Vendor Data opens filtered to unknown vendors and the URL carries the filter. Say: unknown is not optimised to zero, it is the outreach queue.
+**1. Dashboard, 30 seconds.** Hover any metric name for its definition and why it matters. Point at the KPI tiles and the charts: sourcing funnel, screening donut, coverage by type, reply rate, backlog, discovery runs. Click the unknown-rate tile (or the unknown slice of the donut): Vendor Data opens filtered to unknown vendors and the URL carries the filter. Say: unknown is not optimised to zero, it is the outreach queue.
 
 **2. Discovery, 90 seconds.** Database → Vendor Data. Pick `ego_data_stereo` in the config selector, press **Run config**. While it runs (five candidates, haiku), open Database → Vendor Source and show the Custom web search form: type a requirement, **Generate seed queries** proposes eight (each one is a web search the run executes), edit them, **Save config & run** writes a YAML config, no code. Show the GitHub card: languages are a checkbox picker, and the **+** next to any ruleset clones it into a new validated ruleset file. When the run finishes the badges show discovered, vendor sites, pass / unknown / fail, coverage and unknown rate; the Runs list at the bottom of Vendor Source shows the `ruleset_version`.
 Fallback with no budget: tick **Replay latest run** first; it re-extracts the last run's candidates from disk without searching.

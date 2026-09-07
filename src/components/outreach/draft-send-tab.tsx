@@ -7,6 +7,7 @@ import { Mail } from "lucide-react";
 import { ScreenResultBadge, StatusBadge } from "@/components/badges";
 import { DataTable, SortableHeader } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
+import { isFollowUpDraft } from "@/lib/shared/drafts";
 import { Button } from "@/components/ui/button";
 import type { InteractionRow, Vendor } from "@/lib/db/schema";
 import { formatDate, formatPct } from "@/lib/format";
@@ -84,7 +85,7 @@ const columns: ColumnDef<Row>[] = [
     header: "Draft",
     cell: ({ row }) =>
       row.original.draft ? (
-        <Badge variant="secondary">{row.original.draft.llm_summary?.startsWith("follow_up") ? "follow-up" : "draft"} #{row.original.draft.interaction_id}</Badge>
+        <Badge variant="secondary">{isFollowUpDraft(row.original.draft) ? "follow-up" : "draft"} #{row.original.draft.interaction_id}</Badge>
       ) : (
         <span className="text-xs text-muted-foreground">none</span>
       ),

@@ -35,3 +35,6 @@ backgroundColor = "#141414"
 secondaryBackgroundColor = "#1A1A1A"
 textColor = "#E7E7E8"
 ```
+
+## Charts (Dashboard)
+The accent marks the series that matters; every other series uses the four grays (`--chart-1` to `--chart-5`). Pass / unknown / fail keep the badge colours (`--success`, `--warning`, `--destructive`) so a screening outcome in a chart never contradicts the badge next to it. No chart animation: the final state paints on first render.

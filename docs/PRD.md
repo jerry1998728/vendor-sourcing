@@ -39,9 +39,9 @@ Every threshold lives in a versioned ruleset file, not code.
 **P0**
 - Schema (§5), state machine (§6), adapter contract + pure `screen()`
 - Inputs: custom web search (both adapters), manual CSV upload
-- Database page with filters, tags, review queue tab, vendor detail
+- Database section with filters, tags, review queue, vendor detail
 - Outreach page: board, draft & send (human gate), proposals (LLM inference, threshold 0.85)
-- Dashboard with 5 clickable primary metrics
+- Dashboard with 5 clickable primary metrics and linked charts
 - Seed data: ≥15 ego vendors, ≥15 repo orgs
 - Reply test set (10 cases), README, demo script
 
@@ -55,7 +55,7 @@ Every threshold lives in a versioned ruleset file, not code.
 ## 4. Pages
 
 ### 4.1 Dashboard
-Primary metrics — each number is a link to the corresponding filtered view.
+Primary metrics — five tiles; each number is a link to the corresponding filtered view, and hovering a metric name shows its definition and business impact. Below the tiles, linked charts: sourcing funnel (vendors that ever reached each status, from the event log), screening outcome, coverage by vendor type, reply rate, backlog, discovery runs, source channel, country.
 
 | Metric | Links to |
 |---|---|
@@ -68,21 +68,21 @@ Primary metrics — each number is a link to the corresponding filtered view.
 Secondary: output by source channel · stale vendor count · last run (time, counts) · median time-to-first-reply · vendors by country.
 
 ### 4.2 Database
-**Tabs:** Vendors · Review Queue · Inputs
+**Sub-pages (sidebar):** Vendor Source · Vendor Data · Review Queue
 
-**Vendors tab** — table with configurable columns; filters: vendor_type, screen_result, status, owner, country (in / not in), coverage_confidence range, source channel, stale, any tag dimension (multi-select). Row click → Vendor Detail (Attributes / Evidence / Timeline / Thread). Each attribute shows a source badge: `verified` · `proxy` · `manual` · `unknown`.
+**Vendor Data** — table with configurable columns; filters: vendor_type, screen_result, status, owner, country (in / not in), coverage_confidence range, source channel, stale, any tag dimension (multi-select). Row click → Vendor Detail (Attributes / Evidence / Timeline as a vertical rail of status milestones and emails / Thread) with a Back button. Each attribute shows a source badge: `verified` · `proxy` · `manual` · `unknown`.
 
-**Review Queue tab** — one vendor at a time, sorted by coverage_confidence desc. Left: attributes; right: evidence (value, snippet, URL). Unknown must-fields pinned on top. Actions: **Qualify** · **Reject** (reason code required) · **Need info** (→ Qualified, `next_action=outreach_to_verify`).
+**Review Queue** — one vendor at a time, sorted by coverage_confidence desc. Left: attributes; right: evidence (value, snippet, URL). Unknown must-fields pinned on top. Actions: **Qualify** · **Reject** (reason code required) · **Need info** (→ Qualified, `next_action=outreach_to_verify`).
 
-**Inputs tab**
+**Vendor Source** (default sub-page)
 | Input | UI | Pipeline |
 |---|---|---|
-| Custom web search | vendor_type + free-text requirement + limit → LLM generates editable seed queries → Run. GitHub variant: languages, PR threshold, activity window, exclude keywords | adapter → normalize → evidence → screen → Review Queue |
+| Custom web search | vendor_type + ruleset (with a clone-and-edit **New ruleset** dialog) + free-text requirement + limit → LLM generates editable seed queries → Run; disabled buttons say why. GitHub variant: languages (multi-select), PR threshold, activity window, exclude keywords | adapter → normalize → evidence → screen → Review Queue |
 | Manual upload | CSV template, columns = field_path; optional source_url per row; uploader attestation checkbox | `extraction_method=manual`; `verified=true` only with URL or attestation |
 | Scheduled refresh (P1) | Schedule picker, last run, diff count, **Refresh now** | Re-fetch evidence URLs → re-extract → diff → new evidence + `tag_changed` event; screen_result change → Review Queue |
 
 ### 4.3 Outreach Tracking
-**Tabs:** Board · Draft & Send · Proposals
+**Sub-pages (sidebar):** Board · Draft & Send · Proposals
 
 **Board** — columns by status; cards show name, owner, next_action, due_at (overdue red), diligence_stage for in-discussion. Filter by owner, vendor_type.
 
@@ -178,7 +178,7 @@ Identified ─auto─▶ Screened ─fail─▶ Rejected
 ```
  INPUTS                        CORE                              SURFACES
  web_search_llm adapter ─┐                                    ┌─ Dashboard
- github_org adapter ─────┼─▶ normalize → evidence → screen ─▶ │  Database (Vendors · Review Queue · Inputs)
+ github_org adapter ─────┼─▶ normalize → evidence → screen ─▶ │  Database (Vendor Source · Vendor Data · Review Queue)
  manual CSV ─────────────┤        SQLite: vendors · evidence   │  Outreach (Board · Draft&Send · Proposals)
  refresh job (P1) ───────┘        tags · events · runs ...     └─ Vendor Detail
                                         ▲
