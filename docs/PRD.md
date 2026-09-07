@@ -248,5 +248,3 @@ Hard rule: end of D1 = `npm run dev` shows the Database page populated from a co
 | Discovery channels | LLM web search + GitHub API + manual CSV | Crawlers, company-data APIs | Tens of vendors, not thousands; crawlers cost maintenance and company APIs don't answer qualification fields |
 | Storage | SQLite via Drizzle, portable schema | Supabase/Postgres | Zero setup, runs from `git clone`; Postgres is a driver swap |
 | UI | Next.js + shadcn single stack | Python backend + separate React, or Streamlit | One codebase, one process, app-grade UI; Streamlit reads as a notebook |
-
-**Assumed stakeholder decisions** — listed in §2; each is reversible via config and should be confirmed with the hiring manager before Phase 2.
