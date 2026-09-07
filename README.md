@@ -1,8 +1,23 @@
-# Vendor Sourcing & Tracking
+# Abaka AI - Vendor Sourcing & Tracking System (VSTS)
 
-One vendor database, three inputs (custom web search, GitHub organisations, manual CSV) and three surfaces: Dashboard, Database (Vendor Source, Vendor Data, Review Queue) and Outreach (Board, Draft & Send, Proposals). Every field value carries evidence, screening is three-valued (pass / fail / unknown) and status changes only happen through an append-only event log. Product spec: [docs/PRD.md](docs/PRD.md).
+Why: 
+1. Finding potential qualifying vendors that meet different customer needs are difficult
+2. Managing vendor data and relationships at scale without a structure is hard
+3. Tracking bulk vendor communication and lifecycle manually is impossible
 
-## How it works
+How:
+1. A vendor sourcing tool with customizable requirements for different discovery channel.
+* Custom web search, Github search, Manual CSV upload, etc.
+2. A vendor database filters to locate data faster, expandable vendor information for detail view, and review queue for action items.
+* Vendor Source, Vendor Data, Review Queue
+3. A vendor outreach tool with overview on vendor lifecycle, built-in email connector with AI generated draft for one-click send, and LLM powered response and proposal from email conversation, with human authorization as necessary.
+* Board, Draft & Send, Proposals
+
+What: An end-to-end system that sources potential vendors, manages existing vendors, and tracks vendor supply chain at scale.
+
+Product spec: [docs/PRD.md](docs/PRD.md).
+
+## Technical & Data Flow
 
 ```mermaid
 flowchart LR
@@ -23,15 +38,28 @@ flowchart LR
   I --> DB
 ```
 
-**One config + one ruleset per category.** `configs/<name>.yaml` says which adapter to run and how (seed queries or GitHub filters); `rulesets/<name>.vN.yaml` lists the must-fields with thresholds, the should-fields, and the extraction catalog. Adding a category is two YAML files.
+**One config + one ruleset per category**
+* `configs/<name>.yaml` says which adapter to run and how (seed queries or GitHub filters); `rulesets/<name>.vN.yaml` lists the must-fields with thresholds, the should-fields, and the extraction catalog.
+* Adding a category is two YAML files.
 
-**Every value carries evidence.** Adapters return `evidence` rows with a source URL and a verbatim snippet; the extraction step discards any value whose snippet is not found on the fetched page. Only verified rows are promoted to `vendors.attributes` and tagged with a verified badge. Manual uploads are verified only with a URL or the uploader's attestation.
+**Every value carries evidence.** 
+* Adapters return `evidence` rows with a source URL and a verbatim snippet; the extraction step discards any value whose snippet is not found on the fetched page.
+* Only verified rows are promoted to `vendors.attributes` and tagged with a verified badge.
+* Manual uploads are verified only with a URL or the uploader's attestation.
 
-**Screening is three-valued and pure.** `screen(vendor, evidence, ruleset)` returns pass when every must-field passes, fail when a verified value fails a threshold, and unknown when a must-field has no verified evidence. Unknown never rejects; it sets `next_action = outreach_to_verify`, and the outreach draft asks about exactly those fields.
+**Screening is three-valued and pure.** 
+* `screen(vendor, evidence, ruleset)` returns pass when every must-field passes, fail when a verified value fails a threshold, and unknown when a must-field has no verified evidence.
+* Unknown never rejects; it sets `next_action = outreach_to_verify`, and the outreach draft asks about exactly those fields.
 
-**Status changes only through the event log.** `transition()` validates the PRD §6 whitelist and appends an `events` row; `rebuildStatus()` replays the log and throws on mismatch. Only Identified → Screened and Contacted → Replied are automatic. Inference from replies auto-applies at confidence ≥ 0.85, never for quote or sample stages, and every automatic change has a one-click Revert. Refresh diffs are recorded as informational events that do not change status.
+**Status changes only through the event log.** 
+* `transition()` validates the PRD §6 whitelist and appends an `events` row; `rebuildStatus()` replays the log and throws on mismatch.
+* Only Identified → Screened and Contacted → Replied are automatic.
+* Inference from replies auto-applies at confidence ≥ 0.85, never for quote or sample stages, and every automatic change has a one-click Revert.
+* Refresh diffs are recorded as informational events that do not change status.
 
-**Cost control.** Extraction and classification run on claude-haiku-4-5, drafting and inference on claude-sonnet-5. Every run persists raw payloads to `data/runs/<run_id>/`; a replay re-extracts from disk without searching, and development runs are capped at 5 candidates.
+**Cost control.** 
+* Extraction and classification run on claude-haiku-4-5, drafting and inference on claude-sonnet-5.
+* Every run persists raw payloads to `data/runs/<run_id>/`; a replay re-extracts from disk without searching, and development/test runs are capped at 5 candidates.
 
 ### Code map
 
@@ -51,9 +79,11 @@ flowchart LR
 | `configs/`, `rulesets/` | the three P0 categories |
 | `tests/` | unit and integration tests, reply fixtures, CSV fixture |
 
-## Deployment contract
+## MVP Limitation
 
-One long-lived Node process with a writable disk: the SQLite file, `data/runs/`, `token.json` from the OAuth callback, and YAML configs and rulesets written from the Vendor Source page. Discovery, refresh and polling run inside the process (`after()`), and a restart marks unfinished runs failed at boot. This is not a serverless or multi-instance shape; put `APP_PASSWORD` in front of it before it leaves localhost.
+This MVP is a continuous Node process with a writable disk: the SQLite file, `data/runs/`, `token.json` from the OAuth callback, and YAML configs and rulesets written from the Vendor Source page. 
+* Discovery, refresh and polling run inside the process (`after()`), and a restart marks unfinished runs failed at boot.
+* This is not a serverless or multi-instance shape; put `APP_PASSWORD` in front of it before it leaves localhost.
 
 ## Setup
 
@@ -95,14 +125,19 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
 
 ## Tracking replies
 
-- `POST /api/track/poll` fetches new inbound Gmail messages for every active thread, stores them as interactions, moves Contacted → Replied on the first reply, then runs inference. Transitions auto-apply at confidence ≥ 0.85 except `quote_received` and `sampling`, which always wait in **Outreach → Proposals**. Any automatic change can be reverted with one click.
+- `POST /api/track/poll` fetches new inbound Gmail messages for every active thread, stores them as interactions, moves Contacted → Replied on the first reply, then runs inference.
+- Transitions auto-apply at confidence ≥ 0.85 except `quote_received` and `sampling`, which always wait in **Outreach → Proposals**.
+- Any automatic change can be reverted with one click.
 - `POST /api/track/simulate { vendor_id, subject, body }` injects an inbound reply without Gmail (development only) for demos.
 - `npm run test:replies` runs the ten-case reply set in `tests/replies/` through inference and reports accuracy (target ≥ 8/10) and which cases route to Proposals.
 
 ### Scheduled refresh, follow-ups and export (P1)
 
-- `POST /api/refresh { config, vendor_ids?, limit? }` re-fetches the evidence pages of each vendor discovered by that config's adapter, re-extracts, writes new evidence through the normal path and records `tag_changed` / `screen_changed` events (actor=system) on the vendor Timeline. A changed screen result on a vendor past Screened sets `next_action=re_review`, which the Review Queue lists on top. Development refreshes are capped at 5 vendors.
-- **Vendor Source → Scheduled refresh** stores one cron per config in the `schedules` table (5-field cron, UTC, presets in the picker) with a **Refresh now** button. Nothing runs by itself: an external cron calls `POST /api/schedules/run-due`, which runs every enabled schedule whose cron fired since its last run and records `last_run_id`. Example crontab entry:
+- `POST /api/refresh { config, vendor_ids?, limit? }` re-fetches the evidence pages of each vendor discovered by that config's adapter, re-extracts, writes new evidence through the normal path and records `tag_changed` / `screen_changed` events (actor=system) on the vendor Timeline.
+- A changed screen result on a vendor past Screened sets `next_action=re_review`, which the Review Queue lists on top.
+- Development refreshes are capped at 5 vendors.
+- **Vendor Source → Scheduled refresh** stores one cron per config in the `schedules` table (5-field cron, UTC, presets in the picker) with a **Refresh now** button.
+- Nothing runs by itself: an external cron calls `POST /api/schedules/run-due`, which runs every enabled schedule whose cron fired since its last run and records `last_run_id`. Example crontab entry:
 
   ```
   */15 * * * * curl -s -X POST http://localhost:3000/api/schedules/run-due
@@ -125,7 +160,7 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
 | `npm run verify:run [run_id]` | acceptance checks for a run: counts, evidence coverage, no unverified attributes, no duplicates, event replay |
 | `npm run db:generate` / `db:studio` | Drizzle migrations and browser |
 
-## Demo script (5 minutes)
+## Tools & Functions Definition
 
 1. **Dashboard** — KPI tiles and charts: sourcing funnel, screening donut, coverage by type, reply rate, backlog, discovery runs, source, country. Click a tile, bar or slice to land in the filtered view; hover a metric name for its definition and why it matters.
 2. **Database → Vendor Data** — filters live in the URL; open a row for evidence with verbatim snippets and source links, tags with source badges.
