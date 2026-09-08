@@ -1,7 +1,8 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { HelpLabel } from "@/components/help-label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Run } from "@/lib/db/schema";
 import { formatDate, formatPct, shortRunId } from "@/lib/format";
 
@@ -9,8 +10,11 @@ export function RunsList({ runs }: { runs: Run[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Runs</CardTitle>
-        <CardDescription>Every discovery, upload and refresh writes a run with its ruleset version.</CardDescription>
+        <CardTitle>
+          <HelpLabel help="Every discovery, upload and refresh writes a run with its ruleset version and its counts, so any result can be traced back to the rules that produced it and replayed from disk.">
+            Runs
+          </HelpLabel>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {runs.length === 0 ? (

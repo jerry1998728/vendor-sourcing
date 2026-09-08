@@ -35,7 +35,7 @@ export default async function DraftSendPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader title="Draft & Send" description="Qualified vendors and due follow-ups. Every send is a human click to an allowlisted recipient." />
+      <PageHeader title="Draft & Send" help="Qualified vendors and due follow-ups. The draft cites verified evidence and asks about each unknown must-field; sending is always a human click, and only to an allowlisted recipient." />
       <DraftSendTab vendors={sendable} drafts={drafts} gmail={gmail} allowlist={allowlist} notice={notice} />
     </>
   );

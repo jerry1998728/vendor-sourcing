@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, RefreshCw, MessageSquarePlus } from "lucide-react";
 
 import { TONE_CLASS } from "@/components/badges";
+import { HelpLabel } from "@/components/help-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,7 +93,9 @@ export function Thread({ vendor, interactions, devTools }: { vendor: Vendor; int
 
       {devTools && canReceive ? (
         <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
-          <p className="text-xs text-muted-foreground">Development only: inject an inbound reply without Gmail. It runs the same ingest → infer → apply/propose path.</p>
+          <HelpLabel help="Development only: inject an inbound reply without Gmail. It runs the same ingest → infer → apply/propose path as a real reply." className="text-xs font-medium text-muted-foreground">
+            Simulate reply
+          </HelpLabel>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="sim-subject">Subject</Label>
             <Input id="sim-subject" value={subject} onChange={(e) => setSubject(e.target.value)} />

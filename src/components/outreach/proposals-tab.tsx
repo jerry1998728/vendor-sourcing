@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { Check, LoaderCircle, RefreshCw, Undo2, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { HelpLabel } from "@/components/help-label";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LlmEvent, PendingProposal } from "@/lib/db/queries";
 import { formatDate, formatPct } from "@/lib/format";
 import { postJson } from "@/lib/shared/http";
@@ -71,8 +72,11 @@ export function ProposalsTab({ proposals, llmEvents, activeThreads }: { proposal
 
       <Card>
         <CardHeader>
-          <CardTitle>Pending proposals ({proposals.length})</CardTitle>
-          <CardDescription>Inferred from inbound replies but not auto-applied: confidence below 0.85, or a quote / sample stage, which is always a human decision.</CardDescription>
+          <CardTitle>
+            <HelpLabel help="Inferred from inbound replies but not auto-applied: confidence below 0.85, or a quote / sample stage, which is always a human decision.">
+              Pending proposals ({proposals.length})
+            </HelpLabel>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {proposals.length === 0 ? (
@@ -108,8 +112,11 @@ export function ProposalsTab({ proposals, llmEvents, activeThreads }: { proposal
 
       <Card>
         <CardHeader>
-          <CardTitle>Automatic changes ({llmEvents.length})</CardTitle>
-          <CardDescription>Transitions applied by inference at confidence ≥ 0.85. Revert reverses the latest one for a vendor with a human event.</CardDescription>
+          <CardTitle>
+            <HelpLabel help="Transitions applied by inference at confidence ≥ 0.85. Revert reverses the latest one for a vendor with a human event.">
+              Automatic changes ({llmEvents.length})
+            </HelpLabel>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {llmEvents.length === 0 ? (

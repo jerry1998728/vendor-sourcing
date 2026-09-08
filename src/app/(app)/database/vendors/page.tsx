@@ -31,7 +31,7 @@ export default async function VendorDataPage({ searchParams }: { searchParams: P
     <>
       <PageHeader
         title="Vendor Data"
-        description="Every vendor with its evidence, tags and screening result. Filters live in the URL."
+        help="Every vendor with its evidence, tags and screening result. Filters live in the URL, so any view here can be shared as a link or exported as CSV."
       />
       <VendorsTab vendors={vendors} total={total} filters={filters} options={options} configs={configs} defaultConfig={defaultConfig} />
     </>

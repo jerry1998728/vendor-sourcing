@@ -15,7 +15,7 @@ export default function VendorSourcePage() {
     <>
       <PageHeader
         title="Vendor Source"
-        description="Where vendors come from: custom web search, GitHub organisations and manual upload, plus scheduled refreshes and run history."
+        help="Where vendors come from. Pick a channel, describe what you want, and run it: every candidate is normalized, evidenced and screened on the way in, then waits in the Review Queue. Runs and scheduled refreshes are in the buttons on the right."
       />
       <InputsTab configs={listConfigs()} rulesets={listRulesets()} runs={listRuns(db, 100)} schedules={listSchedules(db)} />
     </>

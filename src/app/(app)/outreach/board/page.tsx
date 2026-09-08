@@ -18,7 +18,7 @@ export default async function BoardPage({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <PageHeader title="Board" description="Vendors by status with owner, next action and due date." />
+      <PageHeader title="Board" help="Every active vendor by status, with its owner, next action and due date. Overdue dates are red; In Discussion cards show the diligence stage." />
       <BoardTab vendors={board} options={options} filters={filters} />
     </>
   );

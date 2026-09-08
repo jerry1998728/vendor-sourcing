@@ -16,7 +16,7 @@ export default function ProposalsPage() {
 
   return (
     <>
-      <PageHeader title="Proposals" description="Inferred status changes waiting for a decision, and automatic changes you can revert." />
+      <PageHeader title="Proposals" help="What inference did with inbound replies. Changes below 0.85 confidence, and anything about a quote or a sample, wait here for your decision; changes it applied on its own are listed so you can revert them." />
       <ProposalsTab proposals={pending} llmEvents={llmEvents} activeThreads={activeThreads} />
     </>
   );
