@@ -7,7 +7,7 @@ import path from "node:path";
 import { dump as dumpYaml, load as loadYaml } from "js-yaml";
 import { z } from "zod";
 
-import { RULE_OPS, type FieldRule, type Ruleset } from "@/lib/pipeline/screen";
+import { DILIGENCE_CATEGORIES, RULE_OPS, type FieldRule, type Ruleset } from "@/lib/pipeline/screen";
 import { VENDOR_TYPES, type DiscoveryQuery } from "@/lib/pipeline/types";
 
 export const CONFIG_DIR = path.resolve(process.cwd(), "configs");
@@ -50,6 +50,14 @@ const ExtractFieldSchema = z.object({
   values: z.array(z.string()).optional(),
 });
 
+const DiligenceSchema = z.object({
+  id: z.string().regex(/^[a-z0-9_]+$/),
+  category: z.enum(DILIGENCE_CATEGORIES),
+  label: z.string().min(1),
+  description: z.string().optional(),
+  required: z.boolean().default(false),
+});
+
 const RulesetFileSchema = z.object({
   name: z.string().regex(SAFE_NAME),
   version: z.string().regex(/^v\d+$/),
@@ -58,6 +66,7 @@ const RulesetFileSchema = z.object({
   must: z.array(MustSchema).min(1),
   should: z.array(ShouldSchema).default([]),
   fields: z.array(ExtractFieldSchema).default([]),
+  diligence: z.array(DiligenceSchema).default([]),
 });
 
 export function parseRulesetRef(ref: string): { name: string; version: string } {
@@ -97,6 +106,7 @@ export function loadRuleset(ref: string, dir = RULESET_DIR): Ruleset {
       return { id: s.id, weight: s.weight, description: s.description, any_of };
     }),
     fields: r.fields,
+    diligence: r.diligence,
   };
 }
 

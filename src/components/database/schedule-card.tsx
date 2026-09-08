@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, RefreshCw, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { HelpLabel } from "@/components/help-label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -83,16 +84,31 @@ function ScheduleRow({ config, schedule }: { config: ConfigSummary; schedule: Sc
   );
 }
 
-export function ScheduleCard({ configs, schedules }: { configs: ConfigSummary[]; schedules: ScheduleWithRun[] }) {
+export function ScheduleCard({ configs, schedules, flush = false }: { configs: ConfigSummary[]; schedules: ScheduleWithRun[]; flush?: boolean }) {
   const byConfig = new Map(schedules.map((s) => [s.config, s]));
+  const rows = (
+    <ul className="divide-y">
+      {configs.filter((c) => c.valid).map((c) => (
+        <ScheduleRow key={c.name} config={c} schedule={byConfig.get(c.name)} />
+      ))}
+    </ul>
+  );
+  if (flush) return rows;
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Scheduled refresh</CardTitle>
-        <CardDescription>
-          Re-fetches the evidence pages of each vendor, re-extracts, and diffs attributes and tags. Changes land on the vendor Timeline; a changed screen result goes back to the Review Queue.
-          Schedules run when an external cron calls <code className="font-mono">POST /api/schedules/run-due</code> (see README). Development refreshes are capped at 5 vendors.
-        </CardDescription>
+        <CardTitle>
+          <HelpLabel
+            help={
+              <p>
+                Re-fetches the evidence pages of each vendor, re-extracts, and diffs attributes and tags. Changes land on the vendor Timeline; a changed screen result goes back to the Review Queue.
+                Schedules run when an external cron calls <code className="font-mono">POST /api/schedules/run-due</code> (see README). Development refreshes are capped at 5 vendors.
+              </p>
+            }
+          >
+            Scheduled refresh
+          </HelpLabel>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <ul className="divide-y">

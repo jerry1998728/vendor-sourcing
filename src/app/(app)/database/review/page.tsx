@@ -27,7 +27,7 @@ export default async function ReviewQueuePage({ searchParams }: { searchParams: 
     <>
       <PageHeader
         title="Review Queue"
-        description="Screened vendors one at a time, unknown must-fields first. Vendors flagged by a refresh sit on top."
+        help="The human gate between discovery and outreach. One screened vendor at a time with its unknown must-fields pinned on top: Qualify, Reject with a reason, or Need info to ask the vendor. Vendors a refresh flagged sit on top."
       />
       <ReviewQueue
         queue={queue.map((v) => ({ vendor_id: v.vendor_id, name: v.name, vendor_type: v.vendor_type, screen_result: v.screen_result, coverage_confidence: v.coverage_confidence }))}

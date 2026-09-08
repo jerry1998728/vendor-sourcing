@@ -9,7 +9,7 @@
 One vendor database with three data inputs and three operating surfaces.
 
 - **Inputs:** manual CSV upload · scheduled refresh · custom web search (web vendors, GitHub orgs)
-- **Surfaces (sidebar):** Dashboard · Database · Outreach Tracking
+- **Surfaces (sidebar, grouped by lifecycle stage):** Dashboard · Discover (Vendor Source, Vendor Data) · Select (Review Queue) · Evaluate (Draft & Send, Proposals) · Manage (Board), with Contract & Onboard and Renew or Exit shown as planned stages
 - **Core:** every field value carries evidence; screening is three-valued (pass / fail / unknown); status changes only via an append-only event log.
 
 Three configs, all P0: `ego_data_stereo`, `code_data_github_orgs` (H1a), `code_data_brokers` (H1b).
@@ -87,6 +87,8 @@ Secondary: output by source channel · stale vendor count · last run (time, cou
 **Board** — columns by status; cards show name, owner, next_action, due_at (overdue red), diligence_stage for in-discussion. Filter by owner, vendor_type.
 
 **Draft & Send** — Qualified vendors; LLM draft cites ≥1 verified evidence and asks about each unknown must-field; editable subject/body/recipient; `do_not_send` unless recipient ∈ `DEMO_ALLOWED_RECIPIENTS`; Send → Gmail → `Contacted`.
+
+**Diligence (per vendor)** — the checklist from the vendor's ruleset (`diligence:`), grouped by technical / security / compliance / financial, with required items counted separately. An answer is pass / fail / n.a. plus an optional note, stored as an evidence row on `diligence.<item_id>`: verified only with a source URL or an attestation, and every answer appends an informational event. The diligence stage selector lives here.
 
 **Proposals** — LLM-inferred transitions from inbound replies. Auto-applied if confidence ≥ 0.85 and stage ∉ {quote_received, sampling}; otherwise listed here. Accept / Reject / Revert (any `llm_inference` event).
 

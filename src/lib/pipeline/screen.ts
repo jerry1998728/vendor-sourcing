@@ -39,6 +39,24 @@ export type ShouldRule = {
   any_of: FieldRule[];
 };
 
+export const DILIGENCE_CATEGORIES = ["technical", "security", "compliance", "financial"] as const;
+export type DiligenceCategory = (typeof DILIGENCE_CATEGORIES)[number];
+
+/**
+ * A due-diligence question asked of a vendor under evaluation. Unlike a must
+ * rule it is never screened automatically: a human answers it, and the answer
+ * follows the same evidence rule (a source URL or an attestation, or it does
+ * not count).
+ */
+export type DiligenceItem = {
+  id: string;
+  category: DiligenceCategory;
+  label: string;
+  description?: string;
+  /** required items gate the "ready to approve" count */
+  required: boolean;
+};
+
 export type ExtractField = {
   path: string;
   description: string;
@@ -57,6 +75,8 @@ export type Ruleset = {
   should: ShouldRule[];
   /** extraction catalog the adapters prompt for */
   fields: ExtractField[];
+  /** due-diligence checklist for vendors under evaluation */
+  diligence: DiligenceItem[];
 };
 
 export type EvidenceLike = {

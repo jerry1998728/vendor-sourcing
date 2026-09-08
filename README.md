@@ -17,6 +17,20 @@ What: An end-to-end system that sources potential vendors, manages existing vend
 
 Product spec: [docs/PRD.md](docs/PRD.md).
 
+## Where this sits in the vendor lifecycle
+
+The sidebar is grouped by lifecycle stage, so the app reads in the order the work happens. The last two stages are listed but not built; they are named in the sidebar rather than left implicit.
+
+| Lifecycle stage | In this app | State |
+|---|---|---|
+| Identification and selection | **Discover** (Vendor Source, Vendor Data) and **Select** (Review Queue): discovery channels, evidence-backed screening, then Qualify / Reject / Need info | built |
+| Evaluation and due diligence | **Evaluate** (Draft & Send, Proposals) plus the per-vendor **Diligence** checklist and the diligence stages | built |
+| Contract negotiation and onboarding | — | planned |
+| Performance management | — | planned |
+| Relationship management | **Manage** (Board) with owner, next action and due date, the vendor Thread and automatic follow-ups | partly built |
+| Offboarding or renewal | — | planned |
+
+
 ## User Flow
 
 * Orange nodes are clicks.
@@ -45,34 +59,34 @@ flowchart LR
     style VP   color:#000000
  end
 
-  subgraph SRC["Database › Vendor Source"]
+  subgraph SRC["Discover › Vendor Source"]
     direction LR
-    S1["👆 Describe a requirement<br/>→ Generate seed queries → edit"]:::human --> S3["👆 Save config #38; run"]:::human
-    S2["👆 GitHub: pick languages<br/>and thresholds"]:::human --> S3
+    S1["👆 Pick a channel:<br/>web search · GitHub · manual upload"]:::human --> S3["👆 Save config #38; run"]:::human
+    S2["👆 Describe a requirement → Generate<br/>seed queries · or pick languages"]:::human --> S3
     S5["👆 + New ruleset:<br/>clone the YAML → Save"]:::human -.-> S3
     S3 --> S7["⚙ discover → normalize → evidence<br/>→ screen: pass / fail / unknown → Screened"]:::auto
     S4["👆 Manual CSV: template<br/>→ fill → Upload"]:::human --> S7
-    S6["👆 Scheduled refresh:<br/>save a cron · Refresh now"]:::human --> S7
+    S6["👆 Header buttons: Schedules · Runs"]:::human --> S7
   end
 
-  subgraph DATA["Database › Vendor Data"]
+  subgraph DATA["Discover › Vendor Data"]
     direction LR
     V1["👆 Filters, quick views,<br/>search (all in the URL)"]:::human ~~~ V2["👆 Row → vendor sheet<br/>→ vendor page"]:::human ~~~ V3["👆 Run config ·<br/>Replay latest run"]:::human ~~~ V4["👆 Export CSV"]:::human
   end
 
-  subgraph REV["Database › Review Queue · human gate 1"]
+  subgraph REV["Select › Review Queue · human gate 1"]
     direction LR
     R1["⚙ Screened vendors wait here,<br/>unknown must-fields pinned on top"]:::auto --> R2["👆 Qualify"]:::gate
     R1 --> R3["👆 Reject (reason required)"]:::gate
     R1 --> R4["👆 Need info → Qualified<br/>+ outreach_to_verify"]:::gate
   end
 
-  subgraph SEND["Outreach › Draft #38; Send · human gate 2 · Board"]
+  subgraph SEND["Evaluate › Draft #38; Send · human gate 2 · Manage › Board"]
     direction LR
     O1["👆 Generate draft<br/>(cites evidence, asks the unknowns)"]:::human --> O2["👆 Edit · set recipient · Send<br/>(allowlisted recipients only)"]:::gate --> O3["⚙ Gmail send → Contacted,<br/>thread id saved"]:::auto ~~~ O4["👆 Board: status columns,<br/>owner, next action, due date"]:::human
   end
 
-  subgraph PROP["Outreach › Proposals · human gate 3"]
+  subgraph PROP["Evaluate › Proposals · human gate 3"]
     direction LR
     O5["👆 Poll inbox"]:::human --> O6["⚙ first reply → Replied<br/>infer with sonnet: apply at ≥ 0.85 or propose"]:::auto --> O7["👆 Accept / Reject proposal<br/>(quotes and sampling always wait here)"]:::gate
     O6 --> O8["👆 Revert any automatic change"]:::gate
@@ -81,7 +95,7 @@ flowchart LR
 
   subgraph VP["Vendor page"]
     direction LR
-    P1["Attributes · Evidence ·<br/>Timeline · Thread"]:::auto --> P2["👆 Revert inference · Poll inbox ·<br/>Simulate reply (dev only)"]:::gate ~~~ P3["👆 Back"]:::human
+    P1["Attributes · Evidence ·<br/>Timeline · Thread"]:::auto --> PD["👆 Diligence checklist:<br/>answer with a source or an attestation"]:::gate --> P2["👆 Revert inference · Poll inbox ·<br/>Simulate reply (dev only)"]:::gate ~~~ P3["👆 Back"]:::human
   end
 
   ROOT --> DASH
@@ -99,7 +113,7 @@ Vendor Relationship Life Cycle
 flowchart LR
   classDef gate fill:#83402B,stroke:#ED6941,color:#E7E7E8
   classDef auto fill:#202021,stroke:#6B6B6B,color:#E7E7E8
-  J1["Identified → Screened<br/>⚙ automatic"]:::auto --> J2["Qualified<br/>👆 gate 1: Review Queue"]:::gate --> J3["Contacted<br/>👆 gate 2: Send"]:::gate --> J4["Replied → In Discussion<br/>⚙ inference, revertible"]:::auto --> J5["quote_received · sampling<br/>👆 gate 3: Proposals"]:::gate --> J6["Approved<br/>👆 human only, API today"]:::auto
+  J1["Identified → Screened<br/>⚙ automatic"]:::auto --> J2["Qualified<br/>👆 gate 1: Review Queue"]:::gate --> J3["Contacted<br/>👆 gate 2: Send"]:::gate --> J4["Replied → In Discussion<br/>⚙ inference, revertible"]:::auto --> J5["quote_received · sampling<br/>👆 gate 3: Proposals + Diligence"]:::gate --> J6["Approved<br/>👆 human only, API today"]:::auto
 ```
 
 Everything between the gates is logged as an event with its actor and reason, and any automatic change can be reverted with one click.
@@ -200,7 +214,7 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
 
 1. In Google Cloud create an OAuth client of type **Desktop app**, enable the Gmail API, and add your Google account as a test user while the consent screen is in Testing mode.
 2. Download the client JSON to `credentials.json` in the repo root (gitignored).
-3. Start the app, open **Outreach → Draft & Send** and click **Connect Gmail**. The callback at `/api/gmail/callback` writes `token.json` (gitignored). Scopes: `gmail.send` and `gmail.readonly`.
+3. Start the app, open **Evaluate → Draft & Send**, open the **Sending** button and click **Connect Gmail**. The callback at `/api/gmail/callback` writes `token.json` (gitignored). Scopes: `gmail.send` and `gmail.readonly`.
 4. Add the inbox you will test with to `DEMO_ALLOWED_RECIPIENTS` and restart `npm run dev`.
 
 ## Runs, replay and cost control
@@ -208,22 +222,29 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
 - Every run writes a `runs` row with its `ruleset_version` and persists raw payloads.
 - Outside a production build the discovery limit defaults to 5 candidates; pass `limit` in `POST /api/runs` to override up to the config's own limit.
 - `POST /api/runs { config, replay: true }` (or the **Replay latest run** checkbox) re-extracts the latest finished run's persisted candidates without searching again.
-- A new vendor category is one `configs/<name>.yaml` plus one `rulesets/<name>.vN.yaml`; the Vendor Source page writes web-search and GitHub configs for you, and the **+** next to any ruleset selector clones a ruleset into a validated new file (`POST /api/rulesets`).
+- A new vendor category is one `configs/<name>.yaml` plus one `rulesets/<name>.vN.yaml` (must rules, should rules, the extraction catalog and the `diligence:` checklist); the Vendor Source page writes web-search and GitHub configs for you, and the **+** next to any ruleset selector clones a ruleset into a validated new file (`POST /api/rulesets`).
 
 ## Tracking replies
 
 - `POST /api/track/poll` fetches new inbound Gmail messages for every active thread, stores them as interactions, moves Contacted → Replied on the first reply, then runs inference.
-- Transitions auto-apply at confidence ≥ 0.85 except `quote_received` and `sampling`, which always wait in **Outreach → Proposals**.
+- Transitions auto-apply at confidence ≥ 0.85 except `quote_received` and `sampling`, which always wait in **Evaluate → Proposals**.
 - Any automatic change can be reverted with one click.
 - `POST /api/track/simulate { vendor_id, subject, body }` injects an inbound reply without Gmail (development only) for demos.
 - `npm run test:replies` runs the ten-case reply set in `tests/replies/` through inference and reports accuracy (target ≥ 8/10) and which cases route to Proposals.
+
+### Due diligence
+
+- Each ruleset carries a `diligence:` checklist (technical, security, compliance, financial). A vendor page's **Diligence** tab lists it with progress per category and the required items counted separately.
+- An answer is pass, fail or not applicable with an optional note. It counts only with a source URL or your attestation, the same evidence rule the rest of the database follows; without either it is recorded and shown as unverified.
+- Answers are stored as evidence rows on `diligence.<item_id>` and each one appends an informational event, so the vendor Timeline shows who checked what, when, and against which source. The Board shows progress on cards under evaluation.
+- `POST /api/vendors/<id>/diligence { item_id, value, note?, source_url?, attested_by? }` returns the new status.
 
 ### Scheduled refresh, follow-ups and export (P1)
 
 - `POST /api/refresh { config, vendor_ids?, limit? }` re-fetches the evidence pages of each vendor discovered by that config's adapter, re-extracts, writes new evidence through the normal path and records `tag_changed` / `screen_changed` events (actor=system) on the vendor Timeline.
 - A changed screen result on a vendor past Screened sets `next_action=re_review`, which the Review Queue lists on top.
 - Development refreshes are capped at 5 vendors.
-- **Vendor Source → Scheduled refresh** stores one cron per config in the `schedules` table (5-field cron, UTC, presets in the picker) with a **Refresh now** button.
+- **Vendor Source → Schedules** (a button in the page header) stores one cron per config in the `schedules` table (5-field cron, UTC, presets in the picker) with a **Refresh now** button.
 - Nothing runs by itself: an external cron calls `POST /api/schedules/run-due`, which runs every enabled schedule whose cron fired since its last run and records `last_run_id`. Example crontab entry:
 
   ```
@@ -232,8 +253,8 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
   0 8 * * *    curl -s -X POST http://localhost:3000/api/track/followups
   ```
 
-- `POST /api/track/followups` drafts a follow-up (sonnet) for Contacted vendors 7 days after the last outbound with no reply, moves them to Dormant at 10 days (system event) and drafts a last touch at 14 days. Follow-up drafts appear in **Outreach → Draft & Send**; sending them goes into the existing Gmail thread without a status change. Outside production the body may carry `as_of` to simulate elapsed time.
-- **Database → Vendor Data → Export CSV** downloads the current filtered view (`GET /api/export?<filters>`) with one column per tag dimension.
+- `POST /api/track/followups` drafts a follow-up (sonnet) for Contacted vendors 7 days after the last outbound with no reply, moves them to Dormant at 10 days (system event) and drafts a last touch at 14 days. Follow-up drafts appear in **Evaluate → Draft & Send**; sending them goes into the existing Gmail thread without a status change. Outside production the body may carry `as_of` to simulate elapsed time.
+- **Discover → Vendor Data → Export CSV** downloads the current filtered view (`GET /api/export?<filters>`) with one column per tag dimension.
 
 ## Scripts
 
@@ -250,13 +271,13 @@ Optional: `APP_PASSWORD` puts HTTP Basic auth in front of every page and API rou
 ## Tools & Functions Definition
 
 1. **Dashboard** — KPI tiles and charts: sourcing funnel, screening donut, coverage by type, reply rate, backlog, discovery runs, source, country. Click a tile, bar or slice to land in the filtered view; hover a metric name for its definition and why it matters.
-2. **Database → Vendor Data** — filters live in the URL; open a row for evidence with verbatim snippets and source links, tags with source badges.
-3. **Database → Vendor Source** — describe a requirement, **Generate seed queries**, **Save config & run** (5 candidates in dev; buttons say why they are disabled until the form is ready), or run `ego_data_stereo` from Vendor Data, or replay the last run; upload the 5-row CSV from `tests/fixtures/manual_ego_sample.csv` and watch badges (manual, attested, unknown).
-4. **Database → Review Queue** — Qualify one pass, Reject one fail with a reason, Need info one unknown.
-5. **Outreach → Draft & Send** — pick the Need-info vendor; the draft cites verified facts and asks about the unknown field; edit, send to the allowlisted inbox; the vendor becomes Contacted with a thread id.
-6. **Outreach → Proposals** — reply from the test inbox (or simulate one): Replied is automatic, a plain "let's talk" auto-applies In Discussion, a quote waits for Accept; Revert undoes any automatic change. **Run follow-ups** drafts nudges for silent vendors and parks them as Dormant after 10 days.
-7. **Vendor page** — Attributes with badges, Evidence, Timeline as a vertical rail of status milestones and emails (every actor and reason, refresh diffs, Revert on inference), Thread; **Back** returns to wherever you came from.
-8. **Vendor Source → Scheduled refresh** — Refresh now on a config; the Timeline shows what changed. **Export CSV** on Vendor Data downloads the filtered view.
+2. **Discover → Vendor Data** — filters live in the URL; open a row for evidence with verbatim snippets and source links, tags with source badges.
+3. **Discover → Vendor Source** — describe a requirement, **Generate seed queries**, **Save config & run** (5 candidates in dev; buttons say why they are disabled until the form is ready), or run `ego_data_stereo` from Vendor Data, or replay the last run; upload the 5-row CSV from `tests/fixtures/manual_ego_sample.csv` and watch badges (manual, attested, unknown).
+4. **Select → Review Queue** — Qualify one pass, Reject one fail with a reason, Need info one unknown.
+5. **Evaluate → Draft & Send** — pick the Need-info vendor; the draft cites verified facts and asks about the unknown field; edit, send to the allowlisted inbox; the vendor becomes Contacted with a thread id.
+6. **Evaluate → Proposals** — reply from the test inbox (or simulate one): Replied is automatic, a plain "let's talk" auto-applies In Discussion, a quote waits for Accept; Revert undoes any automatic change. **Run follow-ups** drafts nudges for silent vendors and parks them as Dormant after 10 days.
+7. **Vendor page** — Attributes with badges, Evidence, the Diligence checklist, Timeline as a vertical rail of status milestones and emails (every actor and reason, refresh diffs, Revert on inference), Thread; **Back** returns to wherever you came from.
+8. **Vendor Source → Schedules** — Refresh now on a config; the Timeline shows what changed. **Export CSV** on Vendor Data downloads the filtered view.
 
 ## Improvements/Upgrades
 

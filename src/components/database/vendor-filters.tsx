@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ import {
   VENDOR_STATUSES,
   applyFiltersToParams,
   countActiveFilters,
+  filterChips,
   type ScreenResult,
   type VendorFilters as Filters,
   type VendorStatus,
@@ -98,13 +100,13 @@ export function VendorFilters({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState(filters.q ?? "");
   const [countryText, setCountryText] = React.useState(filters.country?.join(",") ?? "");
 
   const push = React.useCallback(
     (next: Filters) => {
       const params = applyFiltersToParams(next, new URLSearchParams(searchParams.toString()));
-      params.set("tab", "vendors");
       params.delete("vendor");
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
@@ -134,16 +136,31 @@ export function VendorFilters({
   const active = countActiveFilters(filters);
   const tagDimensions = Object.keys(options.tags) as TagDimension[];
 
+  const chips = filterChips(filters);
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      <Input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search name or domain"
+        className="h-8 w-52"
+        aria-label="Search"
+      />
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-1.5 font-normal">
+            <SlidersHorizontal />
+            <span className="font-medium">Filters</span>
+            <span className="text-muted-foreground">· {active > 0 ? `${active} active` : "none"}</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-0 sm:max-w-md">
+          <SheetHeader className="border-b">
+            <SheetTitle>Filters</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-4 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search name or domain"
-          className="h-8 w-52"
-          aria-label="Search"
-        />
         <MultiSelect label="Type" options={options.vendor_types} selected={filters.vendor_type ?? []} onChange={(v) => update({ vendor_type: v.length ? v : undefined })} />
         <MultiSelect label="Screen" options={SCREEN_RESULTS} selected={filters.screen_result ?? []} onChange={(v) => update({ screen_result: v.length ? (v as ScreenResult[]) : undefined })} />
         <MultiSelect label="Status" options={VENDOR_STATUSES} selected={filters.status ?? []} onChange={(v) => update({ status: v.length ? (v as VendorStatus[]) : undefined })} />
@@ -199,11 +216,6 @@ export function VendorFilters({
             })}
           </DropdownMenuContent>
         </DropdownMenu>
-        {active > 0 ? (
-          <Button variant="ghost" size="sm" onClick={() => { setQ(""); setCountryText(""); push({}); }}>
-            <X /> Clear {active}
-          </Button>
-        ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <div className="flex items-center gap-1.5">
@@ -251,6 +263,31 @@ export function VendorFilters({
           <Label htmlFor="stale" className="text-xs text-muted-foreground">Stale (&gt; {STALE_DAYS}d or never verified)</Label>
         </div>
       </div>
+            {active > 0 ? (
+              <Button variant="outline" size="sm" className="self-start" onClick={() => { setQ(""); setCountryText(""); push({}); }}>
+                <X /> Clear {active} filter{active === 1 ? "" : "s"}
+              </Button>
+            ) : null}
+          </div>
+        </SheetContent>
+      </Sheet>
+      {chips.map((chip) => (
+        <Badge key={chip.key} variant="secondary" className="gap-1 pr-1 font-normal">
+          {chip.label}
+          <button
+            type="button"
+            aria-label={`Remove filter ${chip.label}`}
+            className="rounded-sm text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              if (chip.key === "q") setQ("");
+              if (chip.key === "country") setCountryText("");
+              push(chip.clear);
+            }}
+          >
+            <X className="size-3" />
+          </button>
+        </Badge>
+      ))}
     </div>
   );
 }

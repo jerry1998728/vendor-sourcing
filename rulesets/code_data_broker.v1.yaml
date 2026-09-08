@@ -82,3 +82,37 @@ should:
     weight: 1
     field_path: registration_country
     op: present
+
+# Due-diligence checklist for vendors under evaluation. Answers are evidence
+# rows: a source URL or an attestation, or the answer does not count.
+diligence:
+  - id: chain_of_title
+    category: compliance
+    label: Chain of title for resold code
+    description: The broker can show where each corpus came from and that it may be sublicensed for training.
+    required: true
+  - id: licence_audit
+    category: compliance
+    label: Licence audit of the corpus
+    description: Licence mix of the corpus is documented and compatible with training use.
+    required: true
+  - id: secrets_scan
+    category: security
+    label: Secrets and personal data scan
+    description: A sample of the corpus was scanned for keys, tokens and personal data.
+    required: true
+  - id: dedup_and_quality
+    category: technical
+    label: Deduplication and quality checked
+    description: Duplicate rate, language mix and file quality measured on a sample.
+    required: false
+  - id: pricing_received
+    category: financial
+    label: Pricing received in writing
+    description: A written quote with unit, minimum order and delivery terms.
+    required: true
+  - id: entity_confirmed
+    category: financial
+    label: Legal entity and standing confirmed
+    description: Registration confirmed against a public register, plus any financial standing check.
+    required: false

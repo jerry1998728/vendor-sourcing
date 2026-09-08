@@ -1,5 +1,5 @@
 /** Read/write helpers shared by pages, API routes and scripts. */
-import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, like, sql } from "drizzle-orm";
 
 import { isFollowUpDraft } from "@/lib/shared/drafts";
 import type { VendorFilters } from "@/lib/shared/vendor-filters";
@@ -76,13 +76,7 @@ export function getRun(runId: string, db: DbOrTx = getDb()): Run | undefined {
   return db.select().from(runs).where(eq(runs.run_id, runId)).get();
 }
 
-export type RunStatus = "running" | "done" | "failed" | "cancelled";
-
-export function runStatus(run: Run): RunStatus {
-  if (!run.finished_at) return "running";
-  const phase = run.counts.progress?.phase;
-  return phase === "failed" ? "failed" : phase === "cancelled" ? "cancelled" : "done";
-}
+export { runStatus, type RunStatus } from "@/lib/shared/run-status";
 
 /**
  * An unfinished run for this config. No time window: markInterruptedRuns()
@@ -280,4 +274,23 @@ export function listSendable(f: Pick<VendorFilters, "owner" | "vendor_type"> = {
   const qualified = rows.filter((v) => v.status === "Qualified");
   const followUps = rows.filter((v) => v.status !== "Qualified" && isFollowUpDraft(drafts.get(v.vendor_id)));
   return { qualified, followUps, drafts };
+}
+
+/** Verified diligence answers per vendor, for the Board's progress badge. */
+export function diligenceProgressFor(vendorIds: string[], db: DbOrTx = getDb()): Map<string, number> {
+  const out = new Map<string, number>();
+  if (vendorIds.length === 0) return out;
+  const rows = db
+    .select({ vendor_id: evidence.vendor_id, field_path: evidence.field_path })
+    .from(evidence)
+    .where(and(inArray(evidence.vendor_id, vendorIds), eq(evidence.verified, true), like(evidence.field_path, "diligence.%")))
+    .all();
+  const seen = new Map<string, Set<string>>();
+  for (const r of rows) {
+    const set = seen.get(r.vendor_id) ?? new Set<string>();
+    set.add(r.field_path);
+    seen.set(r.vendor_id, set);
+  }
+  for (const [vendorId, set] of seen) out.set(vendorId, set.size);
+  return out;
 }

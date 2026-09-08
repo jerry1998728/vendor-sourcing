@@ -132,3 +132,39 @@ export function countActiveFilters(f: VendorFilters): number {
   return n;
 }
 
+
+export type FilterChip = { key: string; label: string; clear: VendorFilters };
+
+/**
+ * One chip per active filter, each carrying the filter set that removes it.
+ * Lets a collapsed filter panel still show what is applied.
+ */
+export function filterChips(f: VendorFilters): FilterChip[] {
+  const chips: FilterChip[] = [];
+  const drop = <K extends keyof VendorFilters>(key: K): VendorFilters => ({ ...f, [key]: undefined });
+  if (f.q) chips.push({ key: "q", label: `"${f.q}"`, clear: drop("q") });
+  const lists = [
+    ["vendor_type", "type"],
+    ["screen_result", "screen"],
+    ["status", "status"],
+    ["owner", "owner"],
+    ["source_channel", "source"],
+  ] as const;
+  for (const [key, name] of lists) {
+    const values = f[key];
+    if (values?.length) chips.push({ key, label: `${name}: ${values.join(", ")}`, clear: drop(key) });
+  }
+  if (f.country?.length) {
+    chips.push({ key: "country", label: `country ${f.country_mode === "not_in" ? "not in" : "in"} ${f.country.join(", ")}`, clear: { ...f, country: undefined, country_mode: undefined } });
+  }
+  if (f.coverage_min !== undefined || f.coverage_max !== undefined) {
+    chips.push({ key: "coverage", label: `coverage ${f.coverage_min ?? 0}–${f.coverage_max ?? 100}%`, clear: { ...f, coverage_min: undefined, coverage_max: undefined } });
+  }
+  if (f.stale) chips.push({ key: "stale", label: `stale > ${STALE_DAYS}d`, clear: drop("stale") });
+  for (const [dimension, values] of Object.entries(f.tags ?? {})) {
+    if (values?.length) {
+      chips.push({ key: `tag.${dimension}`, label: `${dimension}: ${values.join(", ")}`, clear: { ...f, tags: { ...f.tags, [dimension]: undefined } } });
+    }
+  }
+  return chips;
+}
