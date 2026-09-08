@@ -16,7 +16,7 @@ import type { Vendor } from "@/lib/db/schema";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-function BoardCard({ vendor, now, onClick }: { vendor: Vendor; now: number; onClick: () => void }) {
+function BoardCard({ vendor, now, diligence, onClick }: { vendor: Vendor; now: number; diligence?: { done: number; total: number }; onClick: () => void }) {
   const overdue = vendor.due_at ? Date.parse(vendor.due_at) < now : false;
   return (
     <button
@@ -40,6 +40,11 @@ function BoardCard({ vendor, now, onClick }: { vendor: Vendor; now: number; onCl
             {overdue ? " · overdue" : ""}
           </span>
         ) : null}
+        {vendor.status === "In Discussion" && diligence ? (
+          <Badge variant="outline" className="px-1.5 py-0 text-[10px]" title="Verified due-diligence answers">
+            diligence {diligence.done}/{diligence.total}
+          </Badge>
+        ) : null}
         {vendor.status === "In Discussion" && vendor.diligence_stage ? (
           <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{vendor.diligence_stage}</Badge>
         ) : null}
@@ -52,10 +57,13 @@ export function BoardTab({
   vendors,
   options,
   filters,
+  diligence,
 }: {
   vendors: Vendor[];
   options: VendorFilterOptions;
   filters: Pick<VendorFilters, "owner" | "vendor_type">;
+  /** verified answers and checklist size per vendor, for cards under evaluation */
+  diligence?: Record<string, { done: number; total: number }>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -114,7 +122,7 @@ export function BoardTab({
               </header>
               <div className="flex max-h-[70vh] flex-col gap-2 overflow-y-auto">
                 {list.map((v) => (
-                  <BoardCard key={v.vendor_id} vendor={v} now={now} onClick={() => setSelected(v.vendor_id)} />
+                  <BoardCard key={v.vendor_id} vendor={v} now={now} diligence={diligence?.[v.vendor_id]} onClick={() => setSelected(v.vendor_id)} />
                 ))}
                 {list.length === 0 ? <p className="px-1 py-2 text-xs text-muted-foreground">Empty</p> : null}
               </div>

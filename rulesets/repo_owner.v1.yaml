@@ -109,3 +109,42 @@ should:
     weight: 1
     field_path: website
     op: present
+
+# Due-diligence checklist for vendors under evaluation. Answers are evidence
+# rows: a source URL or an attestation, or the answer does not count.
+diligence:
+  - id: licence_audit
+    category: compliance
+    label: Licence audit of the codebase
+    description: Licences of the repositories and their dependencies are compatible with training use.
+    required: true
+  - id: provenance
+    category: compliance
+    label: Code provenance confirmed
+    description: The organisation owns or has the right to license the code offered, including contributions from outside parties.
+    required: true
+  - id: contributor_agreements
+    category: compliance
+    label: Contributor agreements in place
+    description: A CLA or equivalent covers the contributors whose code is included.
+    required: false
+  - id: secrets_scan
+    category: security
+    label: Secrets and credentials scan
+    description: A sample of the offered code was scanned for keys, tokens and personal data.
+    required: true
+  - id: build_reproducible
+    category: technical
+    label: Build and tests reproducible
+    description: A sample repository builds and its tests run from a clean checkout.
+    required: false
+  - id: pricing_received
+    category: financial
+    label: Pricing received in writing
+    description: A written quote with unit, minimum order and delivery terms.
+    required: true
+  - id: entity_confirmed
+    category: financial
+    label: Legal entity and standing confirmed
+    description: Registration confirmed against a public register, plus any financial standing check.
+    required: false

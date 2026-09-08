@@ -10,8 +10,8 @@ export type NavChild = { title: string; href: string };
 
 export type NavItem = {
   title: string;
-  /** Section root. A section with children opens its first child. */
-  href: string;
+  /** Section root. A section with children opens its first child; a planned stage has none. */
+  href?: string;
   icon: LucideIcon;
   children?: readonly NavChild[];
   /** A lifecycle stage the MVP does not cover yet: shown, not clickable. */
@@ -54,14 +54,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
   },
   {
     title: "Contract & Onboard",
-    href: "/dashboard",
     icon: FileSignature,
     planned: true,
     note: "Contract terms, service levels and onboarding tasks. Not in the MVP: Approved is where the pipeline ends today.",
   },
   {
     title: "Renew or Exit",
-    href: "/dashboard",
     icon: RefreshCcw,
     planned: true,
     note: "Performance against the contract, renewal dates and offboarding. Not in the MVP.",
@@ -74,14 +72,14 @@ export function isNavActive(pathname: string, href: string): boolean {
 }
 
 export function isSectionActive(pathname: string, item: NavItem): boolean {
-  if (item.planned) return false;
+  if (item.planned || !item.href) return false;
   if (item.children?.length) return item.children.some((c) => isNavActive(pathname, c.href));
   return isNavActive(pathname, item.href);
 }
 
-/** The link a section opens: its first sub-page when it has any. */
+/** The link a section opens: its first sub-page when it has any. Planned stages have no page. */
 export function navHref(item: NavItem): string {
-  return item.children?.[0]?.href ?? item.href;
+  return item.children?.[0]?.href ?? item.href ?? "#";
 }
 
 /** Section and sub-page for a pathname, for the header breadcrumb. */

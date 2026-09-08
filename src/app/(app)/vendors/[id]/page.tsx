@@ -8,6 +8,7 @@ import { EvidenceList } from "@/components/vendors/evidence-list";
 import { TagList } from "@/components/vendors/tag-list";
 import { BackButton } from "@/components/back-button";
 import { DetailsToggle } from "@/components/details-toggle";
+import { Diligence } from "@/components/vendors/diligence";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { UrlTabs } from "@/components/url-tabs";
@@ -20,6 +21,7 @@ import type { EvidenceRow } from "@/lib/db/schema";
 import { formatDate, formatPct } from "@/lib/format";
 import { mustFieldsFor } from "@/lib/rulesets/vendor";
 import { isDev } from "@/lib/shared/env";
+import { diligenceItemsFor, diligenceStatus, listDiligenceEvidence } from "@/lib/track/diligence";
 import { singleParam as single } from "@/lib/shared/params";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +49,7 @@ export default async function VendorPage({ params, searchParams }: Props) {
   const vendorId = decodeURIComponent(id);
   const sp = await searchParams;
   const tabParam = single(sp.tab);
-  const tab = tabParam === "evidence" || tabParam === "timeline" || tabParam === "thread" ? tabParam : "attributes";
+  const tab = tabParam === "evidence" || tabParam === "timeline" || tabParam === "thread" || tabParam === "diligence" ? tabParam : "attributes";
   const db = getDb();
   const detail = getVendorDetail(vendorId, db);
   if (!detail) notFound();
@@ -57,6 +59,7 @@ export default async function VendorPage({ params, searchParams }: Props) {
   const latestEventId = events.length ? events[events.length - 1].event_id : null;
   const devTools = isDev();
   const overdue = isOverdue(vendor.due_at);
+  const diligence = diligenceStatus(diligenceItemsFor(vendor, db), listDiligenceEvidence(vendorId, db));
 
   const attributeRows = Object.entries(vendor.attributes).flatMap(([field, value]) =>
     (Array.isArray(value) ? value : [value]).map((v) => ({ field, value: v, evidence: backingEvidence(evidence, field, v), must: must.some((m) => m.field_path === field) })),
@@ -135,8 +138,13 @@ export default async function VendorPage({ params, searchParams }: Props) {
           },
           {
             value: "evidence",
-            label: `Evidence (${evidence.length})`,
-            content: <EvidenceList evidence={evidence} showIds />,
+            label: `Evidence (${evidence.filter((e) => !e.field_path.startsWith("diligence.")).length})`,
+            content: <EvidenceList evidence={evidence.filter((e) => !e.field_path.startsWith("diligence."))} showIds />,
+          },
+          {
+            value: "diligence",
+            label: diligence.total ? `Diligence (${diligence.done}/${diligence.total})` : "Diligence",
+            content: <Diligence vendor={vendor} status={diligence} />,
           },
           { value: "timeline", label: `Timeline (${events.length + interactions.length})`, content: <Timeline vendor={vendor} events={events} interactions={interactions} latestEventId={latestEventId} /> },
           { value: "thread", label: `Thread (${interactions.length})`, content: <Thread vendor={vendor} interactions={interactions} devTools={devTools} /> },

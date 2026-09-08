@@ -106,3 +106,48 @@ should:
     description: The vendor states a dataset scale.
     field_path: scale
     op: present
+
+# Due-diligence checklist for vendors under evaluation (Outreach → the vendor's
+# Diligence tab). Answers are evidence rows: a source URL or an attestation, or
+# the answer does not count.
+diligence:
+  - id: sample_reviewed
+    category: technical
+    label: Sample dataset reviewed
+    description: A representative sample was received and inspected for resolution, frame rate, stereo alignment and scene variety.
+    required: true
+  - id: annotation_quality
+    category: technical
+    label: Annotation quality checked
+    description: Labels, timestamps and calibration files were spot-checked against the raw footage.
+    required: false
+  - id: consent_and_pii
+    category: compliance
+    label: Consent and PII handling confirmed
+    description: Written confirmation of subject consent, bystander handling and face or plate blurring where required.
+    required: true
+  - id: data_licence
+    category: compliance
+    label: Data licence terms reviewed
+    description: Licence scope for model training, exclusivity, derivative works and term length.
+    required: true
+  - id: export_residency
+    category: compliance
+    label: Export and residency restrictions
+    description: Where the data is stored and processed, and any cross-border transfer restrictions.
+    required: false
+  - id: security_posture
+    category: security
+    label: Security posture reviewed
+    description: How raw footage is stored, who can access it, and any certification or audit report.
+    required: false
+  - id: pricing_received
+    category: financial
+    label: Pricing received in writing
+    description: A written quote with unit, minimum order and delivery terms.
+    required: true
+  - id: entity_confirmed
+    category: financial
+    label: Legal entity and standing confirmed
+    description: Registration confirmed against a public register, plus any financial standing check.
+    required: false
