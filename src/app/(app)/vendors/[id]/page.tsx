@@ -7,6 +7,7 @@ import { ScreenResultBadge, SourceBadgeChip, StatusBadge, badgeForEvidence } fro
 import { EvidenceList } from "@/components/vendors/evidence-list";
 import { TagList } from "@/components/vendors/tag-list";
 import { BackButton } from "@/components/back-button";
+import { DetailsToggle } from "@/components/details-toggle";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { UrlTabs } from "@/components/url-tabs";
@@ -123,10 +124,12 @@ export default async function VendorPage({ params, searchParams }: Props) {
                   ))}
                   {attributeRows.length === 0 ? <li className="px-3 py-2 text-sm text-muted-foreground">No verified values yet.</li> : null}
                 </ul>
-                <div className="flex flex-col gap-1.5">
-                  <h3 className="text-sm font-semibold">Tags ({tags.length})</h3>
+                <DetailsToggle
+                  label={`Tags (${tags.length})`}
+                  summary={tags.length ? `${[...new Set(tags.map((t) => t.dimension))].slice(0, 4).join(", ")}${new Set(tags.map((t) => t.dimension)).size > 4 ? "…" : ""}` : "none yet"}
+                >
                   <TagList tags={tags} />
-                </div>
+                </DetailsToggle>
               </div>
             ),
           },

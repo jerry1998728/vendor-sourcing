@@ -2,11 +2,12 @@
 
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { X } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 
 import { ScreenResultBadge } from "@/components/badges";
 import { MultiSelect } from "@/components/database/vendor-filters";
 import { VendorSheet } from "@/components/database/vendor-sheet";
+import { ToolPopover } from "@/components/tool-popover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { VendorFilterOptions } from "@/lib/db/filters";
@@ -67,7 +68,6 @@ export function BoardTab({
     const params = new URLSearchParams(searchParams.toString());
     if (values.length) params.set(key, values.join(","));
     else params.delete(key);
-    params.set("tab", "board");
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
   const active = (filters.owner?.length ?? 0) + (filters.vendor_type?.length ?? 0);
@@ -82,19 +82,25 @@ export function BoardTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <MultiSelect
-          label="Owner"
-          options={[OWNER_UNASSIGNED, ...options.owners]}
-          selected={filters.owner ?? []}
-          onChange={(v) => setList("owner", v)}
-          render={(o) => (o === OWNER_UNASSIGNED ? <span className="text-muted-foreground">unassigned</span> : o)}
-        />
-        <MultiSelect label="Type" options={options.vendor_types} selected={filters.vendor_type ?? []} onChange={(v) => setList("vendor_type", v)} />
-        {active ? (
-          <Button variant="ghost" size="sm" onClick={() => { setList("owner", []); setList("vendor_type", []); }}>
-            <X /> Clear
-          </Button>
-        ) : null}
+        <ToolPopover label="Filters" summary={active ? `${active} active` : "none"} icon={SlidersHorizontal} align="start">
+          <div className="flex flex-col gap-3">
+            <MultiSelect
+              label="Owner"
+              options={[OWNER_UNASSIGNED, ...options.owners]}
+              selected={filters.owner ?? []}
+              onChange={(v) => setList("owner", v)}
+              render={(o) => (o === OWNER_UNASSIGNED ? <span className="text-muted-foreground">unassigned</span> : o)}
+            />
+            <MultiSelect label="Type" options={options.vendor_types} selected={filters.vendor_type ?? []} onChange={(v) => setList("vendor_type", v)} />
+            {active ? (
+              <Button variant="outline" size="sm" className="self-start" onClick={() => { setList("owner", []); setList("vendor_type", []); }}>
+                <X /> Clear {active}
+              </Button>
+            ) : null}
+          </div>
+        </ToolPopover>
+        {filters.owner?.length ? <Badge variant="secondary" className="font-normal">owner: {filters.owner.join(", ")}</Badge> : null}
+        {filters.vendor_type?.length ? <Badge variant="secondary" className="font-normal">type: {filters.vendor_type.join(", ")}</Badge> : null}
         <span className="ml-auto text-sm text-muted-foreground">{vendors.length} vendors</span>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2">

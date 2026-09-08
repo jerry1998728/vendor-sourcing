@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle, RefreshCw, MessageSquarePlus } from "lucide-react";
 
 import { TONE_CLASS } from "@/components/badges";
+import { DetailsToggle } from "@/components/details-toggle";
 import { HelpLabel } from "@/components/help-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,10 +93,16 @@ export function Thread({ vendor, interactions, devTools }: { vendor: Vendor; int
       </ol>
 
       {devTools && canReceive ? (
-        <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
-          <HelpLabel help="Development only: inject an inbound reply without Gmail. It runs the same ingest → infer → apply/propose path as a real reply." className="text-xs font-medium text-muted-foreground">
-            Simulate reply
-          </HelpLabel>
+        <DetailsToggle
+          label={
+            <HelpLabel help="Development only: inject an inbound reply without Gmail. It runs the same ingest → infer → apply/propose path as a real reply.">
+              Simulate reply
+            </HelpLabel>
+          }
+          summary="development only, no Gmail needed"
+          className="border-dashed"
+        >
+          <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="sim-subject">Subject</Label>
             <Input id="sim-subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
@@ -104,13 +111,14 @@ export function Thread({ vendor, interactions, devTools }: { vendor: Vendor; int
             <Label htmlFor="sim-body">Body</Label>
             <Textarea id="sim-body" rows={4} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Thanks, happy to talk next week..." />
           </div>
-          <div>
-            <Button size="sm" onClick={() => void simulate()} disabled={simulating || body.trim().length === 0}>
-              {simulating ? <LoaderCircle className="animate-spin" /> : <MessageSquarePlus />}
-              Simulate reply
-            </Button>
+            <div>
+              <Button size="sm" onClick={() => void simulate()} disabled={simulating || body.trim().length === 0}>
+                {simulating ? <LoaderCircle className="animate-spin" /> : <MessageSquarePlus />}
+                Simulate reply
+              </Button>
+            </div>
           </div>
-        </div>
+        </DetailsToggle>
       ) : null}
     </div>
   );

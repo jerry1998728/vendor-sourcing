@@ -3,12 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, LoaderCircle, RefreshCw, Undo2, X } from "lucide-react";
+import { Check, LoaderCircle, RefreshCw, Send, Undo2, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { DetailsToggle } from "@/components/details-toggle";
 import { HelpLabel } from "@/components/help-label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LlmEvent, PendingProposal } from "@/lib/db/queries";
 import { formatDate, formatPct } from "@/lib/format";
 import { postJson } from "@/lib/shared/http";
@@ -18,6 +20,7 @@ export function ProposalsTab({ proposals, llmEvents, activeThreads }: { proposal
   const [busy, setBusy] = React.useState<string | null>(null);
   const [note, setNote] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const revertable = llmEvents.filter((e) => e.revertable).length;
 
   const run = async (key: string, fn: () => Promise<string>) => {
     setBusy(key);
@@ -57,15 +60,29 @@ export function ProposalsTab({ proposals, llmEvents, activeThreads }: { proposal
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Button size="sm" variant="outline" onClick={() => void poll()} disabled={busy !== null}>
-          {busy === "poll" ? <LoaderCircle className="animate-spin" /> : <RefreshCw />}
-          Poll inbox
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => void followUps()} disabled={busy !== null}>
-          {busy === "followups" ? <LoaderCircle className="animate-spin" /> : <RefreshCw />}
-          Run follow-ups
-        </Button>
-        <span className="text-sm text-muted-foreground">{activeThreads} active Gmail thread{activeThreads === 1 ? "" : "s"}</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="sm" variant="outline" onClick={() => void poll()} disabled={busy !== null}>
+              {busy === "poll" ? <LoaderCircle className="animate-spin" /> : <RefreshCw />}
+              Poll inbox
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="start">
+            Fetch new replies on {activeThreads} active Gmail thread{activeThreads === 1 ? "" : "s"}, then infer what each one means.
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button size="sm" variant="outline" onClick={() => void followUps()} disabled={busy !== null}>
+              {busy === "followups" ? <LoaderCircle className="animate-spin" /> : <Send />}
+              Run follow-ups
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="start">
+            Draft a nudge for vendors silent for 7 days, park them as Dormant at 10, and draft a last touch at 14.
+          </TooltipContent>
+        </Tooltip>
+
         {note ? <span className="text-sm text-muted-foreground">{note}</span> : null}
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -110,15 +127,11 @@ export function ProposalsTab({ proposals, llmEvents, activeThreads }: { proposal
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <HelpLabel help="Transitions applied by inference at confidence ≥ 0.85. Revert reverses the latest one for a vendor with a human event.">
-              Automatic changes ({llmEvents.length})
-            </HelpLabel>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <DetailsToggle
+        label="Automatic changes"
+        summary={llmEvents.length ? `${llmEvents.length} applied by inference · ${revertable} revertable` : "none yet"}
+      >
+        <div>
           {llmEvents.length === 0 ? (
             <p className="text-sm text-muted-foreground">None yet.</p>
           ) : (
@@ -145,8 +158,8 @@ export function ProposalsTab({ proposals, llmEvents, activeThreads }: { proposal
               ))}
             </ul>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DetailsToggle>
     </div>
   );
 }

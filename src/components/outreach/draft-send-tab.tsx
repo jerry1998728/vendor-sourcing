@@ -6,6 +6,7 @@ import { Mail } from "lucide-react";
 
 import { ScreenResultBadge, StatusBadge } from "@/components/badges";
 import { DataTable, SortableHeader } from "@/components/data-table";
+import { ToolPopover } from "@/components/tool-popover";
 import { Badge } from "@/components/ui/badge";
 import { isFollowUpDraft } from "@/lib/shared/drafts";
 import { Button } from "@/components/ui/button";
@@ -124,31 +125,45 @@ export function DraftSendTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          {vendors.length} vendor{vendors.length === 1 ? "" : "s"} ready for outreach: Qualified first contacts and Contacted or Dormant follow-ups. Click a row to draft and send.
+        <p className="text-sm">
+          <span className="font-medium">{vendors.length}</span>{" "}
+          <span className="text-muted-foreground">ready for outreach · click a row to draft and send</span>
         </p>
-        <div className="flex items-center gap-2 text-sm">
-          <Mail className="size-4 text-muted-foreground" />
-          {gmail.connected ? (
-            <span>Gmail connected</span>
-          ) : gmail.configured ? (
-            <>
-              <span className="text-muted-foreground">Gmail not connected</span>
-              <Button asChild size="sm" variant="outline">
-                <a href="/api/gmail/auth">Connect Gmail</a>
-              </Button>
-            </>
-          ) : (
-            <span className="text-destructive">credentials.json missing</span>
-          )}
-        </div>
+        <ToolPopover
+          label="Sending"
+          summary={`${gmail.connected ? "Gmail connected" : gmail.configured ? "not connected" : "no credentials"} · ${allowlist.length} allowed`}
+          icon={Mail}
+        >
+          <div className="flex flex-col gap-3 text-sm">
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">Gmail</span>
+              {gmail.connected ? (
+                <span className="text-muted-foreground">Connected. Sends go out from the connected account and land in its Sent folder.</span>
+              ) : gmail.configured ? (
+                <>
+                  <span className="text-muted-foreground">Not connected yet.</span>
+                  <Button asChild size="sm" variant="outline" className="self-start">
+                    <a href="/api/gmail/auth">Connect Gmail</a>
+                  </Button>
+                </>
+              ) : (
+                <span className="text-destructive">credentials.json is missing; see the README setup section.</span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="font-medium">Allowed recipients</span>
+              {allowlist.length ? (
+                <ul className="flex flex-col gap-0.5 font-mono text-xs text-muted-foreground">
+                  {allowlist.map((a) => <li key={a}>{a}</li>)}
+                </ul>
+              ) : (
+                <span className="text-warning">DEMO_ALLOWED_RECIPIENTS is empty, so every send is rejected server-side. Add your test inbox to .env.local and restart.</span>
+              )}
+            </div>
+          </div>
+        </ToolPopover>
       </div>
       {notice ? <p className="rounded-lg border bg-card px-3 py-2 text-sm">{notice}</p> : null}
-      {!allowlist.length ? (
-        <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
-          DEMO_ALLOWED_RECIPIENTS is empty, so every send is rejected server-side. Add your test inbox to .env.local and restart the dev server.
-        </p>
-      ) : null}
       <DataTable
         columns={columns}
         data={rows}

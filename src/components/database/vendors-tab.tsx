@@ -7,14 +7,13 @@ import { Download } from "lucide-react";
 import { SCREEN_CLASS } from "@/components/badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { VendorFilterOptions } from "@/lib/db/filters";
 import type { ScreenResult, Vendor } from "@/lib/db/schema";
 import { formatPct } from "@/lib/format";
-import type { ConfigSummary } from "@/lib/rulesets/loader";
 import { cn } from "@/lib/utils";
 import { applyFiltersToParams, type VendorFilters as Filters } from "@/lib/shared/vendor-filters";
 
-import { RunConfigButton } from "./run-config-button";
 import { VendorFilters } from "./vendor-filters";
 import { VendorSheet } from "./vendor-sheet";
 import { VendorsTable } from "./vendors-table";
@@ -41,15 +40,11 @@ export function VendorsTab({
   total,
   filters,
   options,
-  configs,
-  defaultConfig,
 }: {
   vendors: Vendor[];
   total: number;
   filters: Filters;
   options: VendorFilterOptions;
-  configs: ConfigSummary[];
-  defaultConfig: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -80,9 +75,8 @@ export function VendorsTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs text-muted-foreground">Views</span>
             {PRESETS.map((p) => {
               const active = canonical(p.filters) === current;
@@ -94,14 +88,12 @@ export function VendorsTab({
                   className="h-7 px-2.5 text-xs"
                   onClick={() => push(active ? { vendor_type: filters.vendor_type } : { vendor_type: filters.vendor_type, ...p.filters })}
                 >
-                  {p.label}
-                </Button>
-              );
-            })}
-          </div>
-          <VendorFilters filters={filters} options={options} />
+                {p.label}
+              </Button>
+            );
+          })}
         </div>
-        <RunConfigButton configs={configs} defaultConfig={defaultConfig} />
+        <VendorFilters filters={filters} options={options} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -121,11 +113,18 @@ export function VendorsTab({
           <Badge variant="outline">coverage {formatPct(summary.coverage)}</Badge>
           {vendorType ? <span className="text-xs text-muted-foreground">· {vendorType} columns shown</span> : null}
         </div>
-        <Button asChild size="sm" variant="outline">
-          <a href={exportHref} download>
-            <Download /> Export CSV{vendors.length !== total ? " (filtered)" : ""}
-          </a>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button asChild size="sm" variant="outline">
+              <a href={exportHref} download aria-label={vendors.length !== total ? "Export the filtered view as CSV" : "Export every vendor as CSV"}>
+                <Download /> Export
+              </a>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            {vendors.length !== total ? `CSV of these ${vendors.length} filtered vendors` : `CSV of all ${total} vendors`}, one column per tag dimension
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       <VendorsTable vendors={vendors} vendorType={vendorType} onSelect={setSelected} />

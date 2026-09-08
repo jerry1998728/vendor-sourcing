@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 
 import { ScreenResultBadge } from "@/components/badges";
 import { EvidenceList } from "@/components/vendors/evidence-list";
+import { DetailsToggle } from "@/components/details-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,10 +67,13 @@ function ReReviewList({ items }: { items: ReReviewItem[] }) {
   };
   if (items.length === 0) return null;
   return (
-    <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
-      <p className="mb-2 font-medium">Re-review: screen result changed on refresh ({items.length})</p>
-      {error ? <p className="mb-2 text-destructive">{error}</p> : null}
-      <ul className="flex flex-col gap-1">
+    <DetailsToggle
+      label="Re-review"
+      summary={`${items.length} vendor${items.length === 1 ? "" : "s"} changed screen result on a refresh`}
+      className="border-warning/40 bg-warning/10"
+    >
+      {error ? <p className="mb-2 text-sm text-destructive">{error}</p> : null}
+      <ul className="flex flex-col gap-1 text-sm">
         {items.map((v) => (
           <li key={v.vendor_id} className="flex flex-wrap items-center gap-2">
             <Link href={`/vendors/${encodeURIComponent(v.vendor_id)}?tab=timeline`} className="font-medium underline-offset-2 hover:underline">{v.name}</Link>
@@ -81,7 +85,7 @@ function ReReviewList({ items }: { items: ReReviewItem[] }) {
           </li>
         ))}
       </ul>
-    </div>
+    </DetailsToggle>
   );
 }
 
@@ -230,8 +234,10 @@ export function ReviewQueue({
               ))}
             </ul>
           </section>
-          <section className="rounded-lg border bg-card p-4">
-            <h3 className="mb-2 text-sm font-semibold">Other verified attributes</h3>
+          <DetailsToggle
+            label="Other verified attributes"
+            summary={otherAttributes.length ? `${otherAttributes.length} field${otherAttributes.length === 1 ? "" : "s"}: ${otherAttributes.slice(0, 3).map(([k]) => k).join(", ")}${otherAttributes.length > 3 ? "…" : ""}` : "none yet"}
+          >
             {otherAttributes.length ? (
               <dl className="grid grid-cols-1 gap-x-4 gap-y-1.5">
                 {otherAttributes.map(([k, v]) => (
@@ -244,7 +250,7 @@ export function ReviewQueue({
             ) : (
               <p className="text-sm text-muted-foreground">None.</p>
             )}
-          </section>
+          </DetailsToggle>
         </div>
         <section className="rounded-lg border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold">Evidence ({evidence.length})</h3>
