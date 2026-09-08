@@ -140,5 +140,9 @@ export function runHistory(n = 10, db: DbOrTx = getDb()): RunPoint[] {
 export function sidebarCounts(db: DbOrTx = getDb()): Record<string, number> {
   const back = backlog(db);
   const sendable = listSendable({}, db);
-  return { "/database/review": back.review_queue, "/outreach/draft": sendable.qualified.length + sendable.followUps.length, "/outreach/proposals": back.proposals };
+  return {
+    "/database/review": back.review_queue,
+    "/outreach/draft": sendable.qualified.length + sendable.followUps.length,
+    "/outreach/proposals": back.proposals,
+  };
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { NAV_ITEMS, isNavActive, navHref } from "@/components/nav-items";
+import { NAV_ITEMS, isNavActive, isSectionActive, navHref, type NavItem } from "@/components/nav-items";
 import {
   Sidebar,
   SidebarContent,
@@ -25,6 +25,13 @@ export type SidebarCounts = Partial<Record<string, number>>;
 
 const ACTIVE_CLASS = "data-active:text-primary data-active:hover:text-primary";
 
+/** A section with one sub-page shows that page's count on the section itself. */
+function sectionCount(item: NavItem, counts: SidebarCounts): number {
+  const children = item.children ?? [];
+  if (children.length !== 1) return 0;
+  return counts[children[0].href] ?? 0;
+}
+
 export function AppSidebar({ counts = {} }: { counts?: SidebarCounts }) {
   const pathname = usePathname();
 
@@ -43,13 +50,28 @@ export function AppSidebar({ counts = {} }: { counts?: SidebarCounts }) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupLabel>Vendor lifecycle</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {NAV_ITEMS.map((item) => {
-                const active = isNavActive(pathname, item.href);
+                const active = isSectionActive(pathname, item);
+                if (item.planned) {
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        tooltip={item.note ?? "Not in the MVP yet"}
+                        aria-disabled
+                        className="cursor-default text-muted-foreground/60 hover:bg-transparent hover:text-muted-foreground/60"
+                      >
+                        <item.icon />
+                        <span>{item.title}</span>
+                        <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground/60 group-data-[collapsible=icon]:hidden">soon</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                }
                 return (
-                  <SidebarMenuItem key={item.href}>
+                  <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
                       isActive={active}
@@ -62,9 +84,14 @@ export function AppSidebar({ counts = {} }: { counts?: SidebarCounts }) {
                       >
                         <item.icon />
                         <span>{item.title}</span>
+                        {sectionCount(item, counts) ? (
+                          <span className="ml-auto rounded-md bg-sidebar-accent px-1.5 text-[11px] tabular-nums text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+                            {sectionCount(item, counts)}
+                          </span>
+                        ) : null}
                       </Link>
                     </SidebarMenuButton>
-                    {item.children ? (
+                    {item.children && item.children.length > 1 ? (
                       <SidebarMenuSub>
                         {item.children.map((child) => {
                           const childActive = isNavActive(pathname, child.href);
