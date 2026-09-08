@@ -76,13 +76,7 @@ export function getRun(runId: string, db: DbOrTx = getDb()): Run | undefined {
   return db.select().from(runs).where(eq(runs.run_id, runId)).get();
 }
 
-export type RunStatus = "running" | "done" | "failed" | "cancelled";
-
-export function runStatus(run: Run): RunStatus {
-  if (!run.finished_at) return "running";
-  const phase = run.counts.progress?.phase;
-  return phase === "failed" ? "failed" : phase === "cancelled" ? "cancelled" : "done";
-}
+export { runStatus, type RunStatus } from "@/lib/shared/run-status";
 
 /**
  * An unfinished run for this config. No time window: markInterruptedRuns()

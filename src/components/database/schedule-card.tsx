@@ -84,8 +84,16 @@ function ScheduleRow({ config, schedule }: { config: ConfigSummary; schedule: Sc
   );
 }
 
-export function ScheduleCard({ configs, schedules }: { configs: ConfigSummary[]; schedules: ScheduleWithRun[] }) {
+export function ScheduleCard({ configs, schedules, flush = false }: { configs: ConfigSummary[]; schedules: ScheduleWithRun[]; flush?: boolean }) {
   const byConfig = new Map(schedules.map((s) => [s.config, s]));
+  const rows = (
+    <ul className="divide-y">
+      {configs.filter((c) => c.valid).map((c) => (
+        <ScheduleRow key={c.name} config={c} schedule={byConfig.get(c.name)} />
+      ))}
+    </ul>
+  );
+  if (flush) return rows;
   return (
     <Card>
       <CardHeader>
