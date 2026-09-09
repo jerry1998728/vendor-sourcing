@@ -1,4 +1,4 @@
-Read docs/PRD.md (v2.0) before any task. Non-negotiables:
+Read docs/PRD.md (v3.0) before any task. Non-negotiables:
 - Stack: Next.js 14+ App Router, TypeScript strict, Drizzle ORM + better-sqlite3, Tailwind + shadcn/ui, @anthropic-ai/sdk, googleapis, octokit, zod for all LLM JSON parsing. No Python.
 - Layout: src/app/(app)/{dashboard,database,outreach,vendors/[id]} · src/app/api/* route handlers · src/lib/{db,pipeline,adapters,rulesets,outreach,track}. Configs in configs/*.yaml, rulesets in rulesets/*.yaml.
 - Eight tables exactly as PRD §5, defined in src/lib/db/schema.ts. All DB access through src/lib/db. Postgres-portable types only.
